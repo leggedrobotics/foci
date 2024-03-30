@@ -47,7 +47,7 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
     """
     obstacle_covs_ = []
     for i in range(obstacle_covs.shape[1]):
-        print("Here")
+    
         obstacle_covs_.append(cas.reshape(obstacle_covs[:,i], 3,3))
     robot_cov = cas.reshape(robot_cov, 3,3)
 
@@ -55,7 +55,7 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
     covs_sum_det = [cas.det(cov) for cov in covs_sum]
     covs_sum_inv = [cas.pinv(cov) for cov in covs_sum]
 
-    print("here")
+   
 
     # define casadi array
     pdf_eval = cas.SX([])
