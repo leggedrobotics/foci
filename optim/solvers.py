@@ -65,7 +65,18 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     return solver, lbg, ub
  
     
+def dump_solver(solver, num_gaussians, num_control_points, num_samples =100, dim_control_points = 3,solver_dir = "./"):
+    """Dump the solver to a casadi file
+    @args:
+        solver: cas.Function
+        num_gaussians: int
+        num_control_points: int
+        num_samples: int
+        dim_control_points: int
+        solver_dir: str
+    """
+    # name solver with parameters
 
-
-
+    solver_name = "solver_" + str(num_gaussians) + "_" + str(num_control_points) + "_" + str(num_samples) + "_" + str(dim_control_points) + ".casadi"
+    solver.save(solver_dir + solver_name)
 
