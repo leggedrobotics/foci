@@ -1,7 +1,5 @@
 import numpy as np
 import casadi as cas
-import matplotlib.pyplot as plt
-import os
 import logging
 logging.basicConfig(level =logging.INFO)
 
@@ -28,16 +26,16 @@ def robot_obstacle_convolution(robot_mean, robot_cov, obstacle_means, obstacle_c
         obstacle_means: [np.array]
         obstacle_covs: [np.array]
     """
-    sum = 0
-    if obstacle_cov_det is None or obstacle_cov_inv is None:
+    conv = 0
+    if obstacle_cov_dets is None or obstacle_cov_invs is None:
         for obstacle_mean, obstacle_cov in zip(obstacle_means, obstacle_covs):
-            sum += normal_pdf_cas(robot_mean, obstacle_mean, robot_cov + obstacle_cov)
+            conv += normal_pdf_cas(robot_mean, obstacle_mean, robot_cov + obstacle_cov)
 
     else:
         for obstacle_mean, obstacle_cov in zip(obstacle_means, obstacle_covs, obstacle_cov_dets, obstacle_cov_invs):
-            sum += normal_pdf_cas(robot_mean, obstacle_mean, robot_cov + obstacle_cov)
+            conv += normal_pdf_cas(robot_mean, obstacle_mean, robot_cov + obstacle_cov)
     # instead of summing the convolutions we can also take the maximum
-    return sum
+    return conv
 
 def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_covs):
     """Return the convolution of the robot and obstacle normal distributions
@@ -47,9 +45,17 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
         obstacle_means: [np.array]
         obstacle_covs: [np.array]
     """
-    covs_sum = [robot_cov + obstacle_cov for obstacle_cov in obstacle_covs]
-    covs_sum_det = [np.linalg.det(cov) for cov in covs_sum]
-    covs_sum_inv = [np.linalg.inv(cov) for cov in covs_sum]
+    obstacle_covs_ = []
+    for i in range(obstacle_covs.shape[1]):
+        print("Here")
+        obstacle_covs_.append(cas.reshape(obstacle_covs[:,i], 3,3))
+    robot_cov = cas.reshape(robot_cov, 3,3)
+
+    covs_sum = [robot_cov + obstacle_cov for obstacle_cov in obstacle_covs_]
+    covs_sum_det = [cas.det(cov) for cov in covs_sum]
+    covs_sum_inv = [cas.pinv(cov) for cov in covs_sum]
+
+    print("here")
 
     # define casadi array
     pdf_eval = cas.SX([])
@@ -58,7 +64,12 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
     for i in range(curve.shape[0]):
         point = curve[i,:].T
         logging.info("Build for point " + str(i))
-        for obstacle_mean, cov_sum, cov_sum_det, cov_sum_inv in zip(obstacle_means, covs_sum, covs_sum_det, covs_sum_inv):
+        for j in range(obstacle_means.shape[1]):
+            obstacle_mean = obstacle_means[:,j]
+            cov_sum = covs_sum[j]
+            cov_sum_det = covs_sum_det[j]
+            cov_sum_inv = covs_sum_inv[j]
+
             pdf_eval = cas.vertcat(
                 pdf_eval, normal_pdf_cas(point, obstacle_mean, cov_sum, cov_determinat = cov_sum_det, cov_inverse = cov_sum_inv))
 
