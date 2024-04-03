@@ -2,6 +2,9 @@ import casadi as cas
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import logging
+
+logging.basicConfig(level =logging.INFO)
 
 from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import curve_robot_obstacle_convolution
@@ -76,7 +79,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     return solver, lbg, ubg
  
     
-def dump_solver(solver, num_gaussians, num_control_points, num_samples =100, dim_control_points = 3,solver_dir = "./"):
+def dump_solver(solver, lbg, ubg, num_gaussians, num_control_points, num_samples =100, dim_control_points = 3,solver_dir = "./"):
     """Dump the solver to a casadi file
     @args:
         solver: cas.Function
@@ -88,6 +91,50 @@ def dump_solver(solver, num_gaussians, num_control_points, num_samples =100, dim
     """
     # name solver with parameters
 
-    solver_name = "solver_" + str(num_gaussians) + "_" + str(num_control_points) + "_" + str(num_samples) + "_" + str(dim_control_points) + ".casadi"
-    solver.save(solver_dir + solver_name)
+    solver_subpath = str(num_gaussians) + "_" + str(num_control_points) + "_" + str(num_samples) + "_" + str(dim_control_points) + "/"
+    # check if directory exists
+    if not os.path.exists(solver_dir):
+        os.makedirs(solver_dir)
+    else:
+        logging.info("Directory already exists, overwriting solver file")
+
+
+    solver.save(solver_dir + solver_subpath + "solver.casadi")
+    # save lbg and ubg
+    np.save(solver_dir + solver_subpath + "lbg.npy", lbg)
+    np.save(solver_dir + solver_subpath + "ubg.npy", ubg)
+
+
+
+
+
+def load_solver(num_gaussians, num_control_points, num_samples =100, dim_control_points = 3,solver_dir = "./"):
+    """Load the solver from a casadi file
+    @args:
+        num_gaussians: int
+        num_control_points: int
+        num_samples: int
+        dim_control_points: int
+        solver_dir: str
+    """
+    
+    # construct name
+    solver_subpath = str(num_gaussians) + "_" + str(num_control_points) + "_" + str(num_samples) + "_" + str(dim_control_points) + "/"
+
+    # check if file exists
+    if not os.path.exists(solver_dir + solver_name):
+        # create new solver
+        logging.info("Solver not found, creating new solver")
+        solver, lbg, ubg = create_solver(num_control_points, num_gaussians, dim_control_points, num_samples)
+        dump_solver(solver, lbg, ubg, num_gaussians, num_control_points, num_samples, dim_control_points, solver_dir)
+    else:
+        solver = Function.load(solver_dir + solver_subpath + "solver.casadi")
+        lbg = np.load(solver_dir + solver_subpath + "lbg.npy")
+        ubg = np.load(solver_dir + solver_subpath + "ubg.npy")
+
+    return solver, lbg, ubg
+
+
+
+
 
