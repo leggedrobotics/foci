@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import os
 import logging
 
+import pandas as pd
+
 logging.basicConfig(level =logging.INFO)
 
 from gsplat_traj_optim.splines.bsplines import  spline_eval
@@ -77,64 +79,46 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     solver = cas.nlpsol("solver", "ipopt", nlp, ipop_options)
 
     return solver, lbg, ubg
- 
-    
-def dump_solver(solver, lbg, ubg, num_gaussians, num_control_points, num_samples =100, dim_control_points = 3,solver_dir = "./"):
-    """Dump the solver to a casadi file
-    @args:
-        solver: cas.Function
-        num_gaussians: int
-        num_control_points: int
-        num_samples: int
-        dim_control_points: int
-        solver_dir: str
-    """
-    # name solver with parameters
-
-    solver_subpath = str(num_gaussians) + "_" + str(num_control_points) + "_" + str(num_samples) + "_" + str(dim_control_points) + "/"
-    # check if directory exists
-    if not os.path.exists(solver_dir):
-        os.makedirs(solver_dir)
-    else:
-        logging.info("Directory already exists, overwriting solver file")
-
-
-    solver.save(solver_dir + solver_subpath + "solver.casadi")
-    # save lbg and ubg
-    np.save(solver_dir + solver_subpath + "lbg.npy", lbg)
-    np.save(solver_dir + solver_subpath + "ubg.npy", ubg)
 
 
 
 
+"""
+class SolverManager:
+    def __init__(self, solver_dir):
+        self.solver_dir = solver_dir
+        
+        # load record file if exists
+        if os.path.exists(solver_dir + "record.csv"):
+            self.record = pd.read_csv(solver_dir + "record.csv")
+        else:
+            self.record = pd.DataFrame(columns = ["id","num_gaussians", "num_control_points", "num_samples", "dim_control_points"])
 
-def load_solver(num_gaussians, num_control_points, num_samples =100, dim_control_points = 3,solver_dir = "./"):
-    """Load the solver from a casadi file
-    @args:
-        num_gaussians: int
-        num_control_points: int
-        num_samples: int
-        dim_control_points: int
-        solver_dir: str
-    """
-    
-    # construct name
-    solver_subpath = str(num_gaussians) + "_" + str(num_control_points) + "_" + str(num_samples) + "_" + str(dim_control_points) + "/"
+    def get_solver(self, id):
+        pass
 
-    # check if file exists
-    if not os.path.exists(solver_dir + solver_name):
-        # create new solver
-        logging.info("Solver not found, creating new solver")
-        solver, lbg, ubg = create_solver(num_control_points, num_gaussians, dim_control_points, num_samples)
-        dump_solver(solver, lbg, ubg, num_gaussians, num_control_points, num_samples, dim_control_points, solver_dir)
-    else:
-        solver = Function.load(solver_dir + solver_subpath + "solver.casadi")
-        lbg = np.load(solver_dir + solver_subpath + "lbg.npy")
-        ubg = np.load(solver_dir + solver_subpath + "ubg.npy")
+    def get_solver(self, num_gaussians, num_control_points, num_samples, dim_control_points):
+        # check if solver already exists
+        if self.record[(self.record["num_gaussians"] == num_gaussians) \ 
+            & (self.record["num_control_points"] == num_control_points) \
+            & (self.record["num_samples"] == num_samples) \
+            & (self.record["dim_control_points"] == dim_control_points)].shape[0] > 0:
 
-    return solver, lbg, ubg
+            ids = self.record[(self.record["num_gaussians"] == num_gaussians) \
+                & (self.record["num_control_points"] == num_control_points) \
+                & (self.record["num_samples"] == num_samples) \
+                & (self.record["dim_control_points"] == dim_control_points)]["id"].values[0]
+            return self.get_solver(ids[0])
+        else:
+            return self.create_solver(num_gaussians, num_control_points, num_samples, dim_control_points)
+  
+    def create_solver(self, num_gaussians, num_control_points, num_samples, dim_control_points):
+        pass
 
 
+    def save_solver(self, solver, lbg, ub, lbg, ubgg, num_gaussians, num_control_points, num_samples, dim_control_points):
+        pass
 
+"""      
 
 
