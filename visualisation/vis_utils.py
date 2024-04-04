@@ -61,7 +61,7 @@ class EnvAndPathVis():
             # compute max eigenvalue
             eigval, eigvec = np.linalg.eig(covs[i].reshape(3,3))
             max_eigval = np.max(eigval)
-            radius = 3*np.sqrt(max_eigval)
+            radius = np.sqrt(max_eigval)
 
             sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius)
             sphere.compute_vertex_normals()
@@ -75,6 +75,25 @@ class EnvAndPathVis():
             sphere.transform(translation)
             self.components.append(sphere)
                     
+    def add_gaussian_path(self, means, cov, color = [0,1,0]):
+        self.add_curve(means, color)
+        eigval, eigvec = np.linalg.eig(cov.reshape(3,3))
+        max_eigval = np.max(eigval)
+        radius = np.sqrt(max_eigval)
+        
+        for i in range(len(means)):
+            sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius)
+            sphere.compute_vertex_normals()
+            sphere.paint_uniform_color(color)
+
+            # Define translation matrix
+            translation = np.identity(4)
+            translation[0:3, 3] = means[i,:]
+
+            # Apply translation to the sphere
+            sphere.transform(translation)
+            self.components.append(sphere)
+            
 
     def show(self):
         """Show the visualization

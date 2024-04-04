@@ -59,7 +59,7 @@ class BasicAStar(AStar):
     
 
 
-def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_control_points=20, visualize=False):
+def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_control_points=20):
     min_x = min(means[:,0].min(), start_point[0], end_point[0])
     max_x = max(means[:,0].max(), start_point[0], end_point[0])
     min_y = min(means[:,1].min(), start_point[1], end_point[1])
@@ -129,36 +129,8 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
     sol = solver(lbg=lbg, ubg=ubg, x0=control_points_init.flatten())
 
     control_points_opt = np.array(sol['x']).reshape(3,num_control_points).T
-
-    if visualize:
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(means)
-        voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,
-                                                                voxel_size=voxel_size)
-        
-        # draw a star path with LineSet
-        lines = []
-        for i in range(len(path)-1):
-            lines.append([i, i+1])
-        line_set = o3d.geometry.LineSet(
-            points=o3d.utility.Vector3dVector(path),
-            lines=o3d.utility.Vector2iVector(lines),
-        )
-        # set color to red and width to 5
-        line_set.paint_uniform_color([0, 0, 1])
-
-        path_points = np.array(path)
-        path_pcd = o3d.geometry.PointCloud()
-        path_pcd.points = o3d.utility.Vector3dVector(path_points)
-        path_pcd.paint_uniform_color([1, 0, 0])
-
-
-        initial_guess_curve = spline_eval(control_points_opt, 1000)
-        curve_pcd = o3d.geometry.PointCloud()
-        curve_pcd.points = o3d.utility.Vector3dVector(initial_guess_curve)
-        curve_pcd.paint_uniform_color([0, 1, 0])
-        o3d.visualization.draw_geometries([voxel_grid ,line_set, curve_pcd])
-
     
-    return sol['x']
+    initial_guess_curve = spline_eval(control_points_opt, 200)
+    
+    return sol['x'], (path_arr, initial_guess_curve)
 
