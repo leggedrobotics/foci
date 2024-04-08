@@ -24,11 +24,11 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
 
 
     # define optimization parameters
-    start_pos = cas.SX.sym("start_pos", dim_control_points, 1)
-    end_pos = cas.SX.sym("end_pos", dim_control_points, 1)
-    obstacle_means = cas.SX.sym("obstacle_means", dim_control_points, n_gaussians)
-    obstacle_covs = cas.SX.sym("obstacle_covs", dim_control_points * dim_control_points, n_gaussians)
-    robot_cov = cas.SX.sym("robot_cov", dim_control_points* dim_control_points,1)
+    start_pos = cas.MX.sym("start_pos", dim_control_points, 1)
+    end_pos = cas.MX.sym("end_pos", dim_control_points, 1)
+    obstacle_means = cas.MX.sym("obstacle_means", dim_control_points, n_gaussians)
+    obstacle_covs = cas.MX.sym("obstacle_covs", dim_control_points * dim_control_points, n_gaussians)
+    robot_cov = cas.MX.sym("robot_cov", dim_control_points* dim_control_points,1)
     params = cas.vertcat(cas.vec(start_pos),
                     cas.vec(end_pos),
                     cas.vec(obstacle_means),
@@ -37,7 +37,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     )
 
     # define optimization variables
-    control_points = cas.SX.sym("control_points", num_control_points, dim_control_points)
+    control_points = cas.MX.sym("control_points", num_control_points, dim_control_points)
     dec_vars = cas.vertcat(cas.vec(control_points))
     
     # define helpful mappings
@@ -49,7 +49,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     # define optimization constraints
     lbg = []
     ubg = []
-    cons = cas.SX([])
+    cons = cas.MX([])
     
     cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2)
     lbg = np.concatenate((lbg, [0]))

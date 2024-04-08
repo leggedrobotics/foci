@@ -7,7 +7,7 @@ logging.basicConfig(level =logging.INFO)
 def normal_pdf_cas(x, mean, cov, cov_determinat = None, cov_inverse = None):
     """Return the evaluation of the multivariate normal distribution at x
     @args:
-        x : cas.SX
+        x : cas.MX
         mean: np.array
         cov: np.array
     """
@@ -21,7 +21,7 @@ def normal_pdf_cas(x, mean, cov, cov_determinat = None, cov_inverse = None):
 def robot_obstacle_convolution(robot_mean, robot_cov, obstacle_means, obstacle_covs, obstacle_cov_dets = None, obstacle_cov_invs= None):
     """Return the convolution of the robot and obstacle normal distributions
     @args
-        robot_mean: cas.SX
+        robot_mean: cas.MX
         robot_cov: np.array
         obstacle_means: [np.array]
         obstacle_covs: [np.array]
@@ -52,13 +52,13 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
     robot_cov = cas.reshape(robot_cov, 3,3)
 
     covs_sum = [robot_cov + obstacle_cov for obstacle_cov in obstacle_covs_]
-    covs_sum_det = [cas.det(cov) for cov in covs_sum]
+    covs_sum_det = [1 for cov in covs_sum]
     covs_sum_inv = [cas.pinv(cov) for cov in covs_sum]
 
    
 
     # define casadi array
-    pdf_eval = cas.SX([])
+    pdf_eval = cas.MX([])
 
     print(curve.shape)
     for i in range(curve.shape[0]):
