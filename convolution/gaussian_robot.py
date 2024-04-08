@@ -58,9 +58,8 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
    
 
     # define casadi array
-    pdf_eval = cas.SX([])
 
-    print(curve.shape)
+    pdf_eval = 0
     for i in range(curve.shape[0]):
         point = curve[i,:].T
         logging.info("Build for point " + str(i))
@@ -70,9 +69,9 @@ def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_
             cov_sum_det = covs_sum_det[j]
             cov_sum_inv = covs_sum_inv[j]
 
-            pdf_eval = cas.vertcat(
-                pdf_eval, normal_pdf_cas(point, obstacle_mean, cov_sum, cov_determinat = cov_sum_det, cov_inverse = cov_sum_inv))
+            normal_eval =normal_pdf_cas(point, obstacle_mean, cov_sum, cov_determinat = cov_sum_det, cov_inverse = cov_sum_inv) 
+            pdf_eval = pdf_eval + normal_eval ** 2
 
-    return cas.norm_2(pdf_eval) / pdf_eval.shape[0]
+    return cas.sqrt(pdf_eval) / (curve.shape[0] * obstacle_means.shape[1])
 
 
