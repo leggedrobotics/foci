@@ -11,14 +11,14 @@ logging.basicConfig(level =logging.INFO)
 from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
 
-def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30, sym_type="SX"):
+def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30, expand=False):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
         n_gaussians: int
         dim_control_points: int
         num_samples: int
-        sym_type: str, "SX" or "MX"
+        expand: bool
     @returns:
         solver: casadi solver object
         lbg: np.array
@@ -72,7 +72,10 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     accel_cost = cas.sum1(cas.sum2(ddcurve**2))
 
     convolution_functor = create_curve_robot_obstacle_convolution_functor(num_samples, n_gaussians, dim_control_points)
+    if expand:
+        convolution_functor = convolution_functor.expand()
     obstacle_cost = convolution_functor(curve, robot_cov, obstacle_means, obstacle_covs)
+
 
     cost = length_cost +  1000000 * obstacle_cost + 0.1 *accel_cost
 

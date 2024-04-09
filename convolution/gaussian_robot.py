@@ -4,7 +4,7 @@ import logging
 logging.basicConfig(level =logging.INFO)
 
 # ======================== CLEAN APPROACH ====================================
-def create_normal_pdf_functor(dim, sym_type="SX"):
+def create_normal_pdf_functor(dim):
     SYM_TYPE = cas.SX
 
     x = SYM_TYPE.sym("x", dim, 1)
@@ -16,7 +16,7 @@ def create_normal_pdf_functor(dim, sym_type="SX"):
 
     return cas.Function("normal_pdf", [x, mu, cov_det, cov_inv], [pdf])
 
-def create_robot_obstacle_convolution_functor(num_obstacles, dim, sym_type="SX"):
+def create_robot_obstacle_convolution_functor(num_obstacles, dim):
     SYM_TYPE = cas.SX
     pdf_functor = create_normal_pdf_functor(dim)
     
@@ -43,7 +43,7 @@ def create_robot_obstacle_convolution_functor(num_obstacles, dim, sym_type="SX")
     return cas.Function("robot_obstacle_convolution", [robot_mean, robot_cov, obstacle_means, obstacle_covs], [norm_conv])
  
 
-def create_curve_robot_obstacle_convolution_functor(num_samples, num_obstacles, dim, sym_type="SX"):
+def create_curve_robot_obstacle_convolution_functor(num_samples, num_obstacles, dim):
     SYM_TYPE = cas.MX
 
     convolution_functor = create_robot_obstacle_convolution_functor(num_obstacles, dim)
