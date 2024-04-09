@@ -11,24 +11,28 @@ logging.basicConfig(level =logging.INFO)
 from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import curve_robot_obstacle_convolution
 
-def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30):
+def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30, sym_type="SX"):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
         n_gaussians: int
         dim_control_points: int
+        num_samples: int
+        sym_type: str, "SX" or "MX"
+    @returns:
+        solver: casadi solver object
+        lbg: np.array
+        ubg: np.array
     """
 
-    print(num_control_points)
-    print(n_gaussians)
-
+    SYM_TYPE = cas.SX if sym_type == "SX" else cas.MX  
 
     # define optimization parameters
-    start_pos = cas.SX.sym("start_pos", dim_control_points, 1)
-    end_pos = cas.SX.sym("end_pos", dim_control_points, 1)
-    obstacle_means = cas.SX.sym("obstacle_means", dim_control_points, n_gaussians)
-    obstacle_covs = cas.SX.sym("obstacle_covs", dim_control_points * dim_control_points, n_gaussians)
-    robot_cov = cas.SX.sym("robot_cov", dim_control_points* dim_control_points,1)
+    start_pos = SYM_TYPE.sym("start_pos", dim_control_points, 1)
+    end_pos = SYM_TYPE.sym("end_pos", dim_control_points, 1)
+    obstacle_means = SYM_TYPE.sym("obstacle_means", dim_control_points, n_gaussians)
+    obstacle_covs = SYM_TYPE.sym("obstacle_covs", dim_control_points * dim_control_points, n_gaussians)
+    robot_cov = SYM_TYPE.sym("robot_cov", dim_control_points* dim_control_points,1)
     params = cas.vertcat(cas.vec(start_pos),
                     cas.vec(end_pos),
                     cas.vec(obstacle_means),
@@ -37,7 +41,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     )
 
     # define optimization variables
-    control_points = cas.SX.sym("control_points", num_control_points, dim_control_points)
+    control_points = SYM_TYPE.sym("control_points", num_control_points, dim_control_points)
     dec_vars = cas.vertcat(cas.vec(control_points))
     
     # define helpful mappings
@@ -49,7 +53,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     # define optimization constraints
     lbg = []
     ubg = []
-    cons = cas.SX([])
+    cons = SYM_TYPE([])
     
     cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2)
     lbg = np.concatenate((lbg, [0]))
