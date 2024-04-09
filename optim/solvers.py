@@ -25,7 +25,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
         ubg: np.array
     """
 
-    SYM_TYPE = cas.SX if sym_type == "SX" else cas.MX  
+    SYM_TYPE = cas.MX  
 
     # define optimization parameters
     start_pos = SYM_TYPE.sym("start_pos", dim_control_points, 1)
