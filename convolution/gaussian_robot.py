@@ -3,75 +3,61 @@ import casadi as cas
 import logging
 logging.basicConfig(level =logging.INFO)
 
+# ======================== CLEAN APPROACH ====================================
+def create_normal_pdf_functor(dim):
+    SYM_TYPE = cas.SX
 
-def normal_pdf_cas(x, mean, cov, cov_determinat = None, cov_inverse = None):
-    """Return the evaluation of the multivariate normal distribution at x
-    @args:
-        x : cas.MX
-        mean: np.array
-        cov: np.array
-    """
-    if cov_determinat is None:
-        cov_determinat = np.linalg.det(cov)
-    if cov_inverse is None:
-        cov_inverse = np.linalg.inv(cov)
+    x = SYM_TYPE.sym("x", dim, 1)
+    mu = SYM_TYPE.sym("mu", dim, 1)
+    cov_det = SYM_TYPE.sym("cov_det", 1, 1)
+    cov_inv = SYM_TYPE.sym("cov_inv", dim, dim)
 
-    return 1/np.sqrt((2*np.pi)**2 * cov_determinat)* cas.exp(-0.5 * (x - mean).T @cov_inverse@ (x - mean))
+    pdf = cas.exp(-0.5 * (x-mu).T@ cov_inv @ (x-mu)) / (cas.sqrt(2 * cas.pi) * cov_det)
 
-def robot_obstacle_convolution(robot_mean, robot_cov, obstacle_means, obstacle_covs, obstacle_cov_dets = None, obstacle_cov_invs= None):
-    """Return the convolution of the robot and obstacle normal distributions
-    @args
-        robot_mean: cas.MX
-        robot_cov: np.array
-        obstacle_means: [np.array]
-        obstacle_covs: [np.array]
-    """
-    conv = 0
-    if obstacle_cov_dets is None or obstacle_cov_invs is None:
-        for obstacle_mean, obstacle_cov in zip(obstacle_means, obstacle_covs):
-            conv += normal_pdf_cas(robot_mean, obstacle_mean, robot_cov + obstacle_cov)
+    return cas.Function("normal_pdf", [x, mu, cov_det, cov_inv], [pdf])
 
-    else:
-        for obstacle_mean, obstacle_cov in zip(obstacle_means, obstacle_covs, obstacle_cov_dets, obstacle_cov_invs):
-            conv += normal_pdf_cas(robot_mean, obstacle_mean, robot_cov + obstacle_cov)
-    # instead of summing the convolutions we can also take the maximum
-    return conv
-
-def curve_robot_obstacle_convolution(curve, robot_cov, obstacle_means, obstacle_covs):
-    """Return the convolution of the robot and obstacle normal distributions
-    @args
-        curve: np.array
-        robot_cov: np.array
-        obstacle_means: [np.array]
-        obstacle_covs: [np.array]
-    """
-    obstacle_covs_ = []
-    for i in range(obstacle_covs.shape[1]):
+def create_robot_obstacle_convolution_functor(num_obstacles, dim):
+    SYM_TYPE = cas.SX
+    pdf_functor = create_normal_pdf_functor(dim)
     
+    robot_mean = SYM_TYPE.sym("robot_mean", dim, 1)
+    robot_cov = SYM_TYPE.sym("robot_cov", dim * dim)
+    obstacle_means = SYM_TYPE.sym("obstacle_means", dim, num_obstacles)
+    obstacle_covs = SYM_TYPE.sym("obstacle_covs", dim * dim, num_obstacles)
+
+    obstacle_covs_ = []
+    for i in range(obstacle_covs.shape[1]): 
         obstacle_covs_.append(cas.reshape(obstacle_covs[:,i], 3,3))
-    robot_cov = cas.reshape(robot_cov, 3,3)
+    robot_cov_ = cas.reshape(robot_cov, 3,3)
 
-    covs_sum = [robot_cov + obstacle_cov for obstacle_cov in obstacle_covs_]
-    covs_sum_det = [1 for cov in covs_sum]
+    covs_sum = [robot_cov_ + obstacle_cov for obstacle_cov in obstacle_covs_]
+    covs_sum_det = [cas.det(cov) for cov in covs_sum]
     covs_sum_inv = [cas.pinv(cov) for cov in covs_sum]
+    
+    conv = 0
 
-   
+    for i in range(num_obstacles):
+        conv += pdf_functor(robot_mean, obstacle_means[:,i], covs_sum_det[i], covs_sum_inv[i])
 
-    # define casadi array
+    norm_conv = conv / num_obstacles
+    return cas.Function("robot_obstacle_convolution", [robot_mean, robot_cov, obstacle_means, obstacle_covs], [norm_conv])
+ 
 
-    pdf_eval = 0
-    for i in range(curve.shape[0]):
-        point = curve[i,:].T
-        logging.info("Build for point " + str(i))
-        for j in range(obstacle_means.shape[1]):
-            obstacle_mean = obstacle_means[:,j]
-            cov_sum = covs_sum[j]
-            cov_sum_det = covs_sum_det[j]
-            cov_sum_inv = covs_sum_inv[j]
+def create_curve_robot_obstacle_convolution_functor(num_samples, num_obstacles, dim):
+    SYM_TYPE = cas.MX
 
-            normal_eval =normal_pdf_cas(point, obstacle_mean, cov_sum, cov_determinat = cov_sum_det, cov_inverse = cov_sum_inv) 
-            pdf_eval = pdf_eval + normal_eval ** 2
+    convolution_functor = create_robot_obstacle_convolution_functor(num_obstacles, dim)
 
-    return cas.sqrt(pdf_eval) / (curve.shape[0] * obstacle_means.shape[1])
+    curve = SYM_TYPE.sym("curve", num_samples, dim)
+    robot_cov = SYM_TYPE.sym("robot_cov", dim * dim)
+    obstacle_means = SYM_TYPE.sym("obstacle_means", dim, num_obstacles)
+    obstacle_covs = SYM_TYPE.sym("obstacle_covs", dim * dim, num_obstacles)
+    
+    conv = 0
+    for i in range(num_samples):
+        logging.info(f"Computing convolution for point {i}")
+        point = curve[i,:]
+        conv += convolution_functor(point, robot_cov, obstacle_means, obstacle_covs)
 
-
+    return cas.Function("curve_robot_obstacle_convolution", [curve, robot_cov, obstacle_means, obstacle_covs], [conv])
+    
