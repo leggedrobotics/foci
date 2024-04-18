@@ -11,7 +11,7 @@ logging.basicConfig(level =logging.INFO)
 from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
 
-def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30, expand=False):
+def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30, expand=False, parallelization="openmp"):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
@@ -71,7 +71,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
 
     accel_cost = cas.sum1(cas.sum2(ddcurve**2))
 
-    convolution_functor = create_curve_robot_obstacle_convolution_functor(num_samples, n_gaussians, dim_control_points, parallelization = "openmp")
+    convolution_functor = create_curve_robot_obstacle_convolution_functor(num_samples, n_gaussians, dim_control_points, parallelization = parallelization)
     if expand:
         convolution_functor = convolution_functor.expand()
     obstacle_cost = convolution_functor(curve.T, robot_cov, obstacle_means, obstacle_covs)
