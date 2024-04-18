@@ -7,7 +7,7 @@ class EnvAndPathVis():
     def __init__(self):
        self.components = []
 
-    def add_voxels(self, points, voxel_size = 1, color = [0,0,1]):
+    def add_voxels(self, points, voxel_size = 1):
         """Add voxels to the visualization
         @args:
             points: np.array
@@ -19,7 +19,6 @@ class EnvAndPathVis():
         voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,
                                                         voxel_size=voxel_size)
 
-        voxel_grid.paint_uniform_color(color)
         self.components.append(voxel_grid)
 
 

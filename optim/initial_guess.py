@@ -78,7 +78,7 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
     voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,
                                                             voxel_size=voxel_size)
 
-    astar_path_finder = BasicAStar(bounds, voxel_grid, step_size=1.0)
+    astar_path_finder = BasicAStar(bounds, voxel_grid, step_size=voxel_size)
 
     start = (start_point[0], start_point[1], start_point[2])
     end = (end_point[0], end_point[1], end_point[2])
