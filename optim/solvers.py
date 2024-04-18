@@ -77,7 +77,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     obstacle_cost = convolution_functor(curve.T, robot_cov, obstacle_means, obstacle_covs)
 
 
-    cost = length_cost +  1000000 * obstacle_cost + 0.1 *accel_cost
+    cost = length_cost +  100 * obstacle_cost + 0.1 *accel_cost
 
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "g": cons, "p": params}
