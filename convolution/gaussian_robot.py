@@ -19,6 +19,8 @@ def create_normal_pdf_functor(dim):
 
     return cas.Function("normal_pdf", [x, mu, cov_det, cov_inv], [pdf])
 
+    print("pdf shape",pdf.shape)
+
 def create_matrix_inverse_functor(dim):
     SYM_TYPE = cas.SX
 
