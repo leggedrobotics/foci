@@ -46,7 +46,7 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     
     # define helpful mappings
     curve = spline_eval(control_points, num_samples)
-    dcurve = spline_eval(control_points, num_samples, derivate =1)
+    # dcurve = spline_eval(control_points, num_samples, derivate =1)
     ddcurve = spline_eval(control_points, num_samples, derivate =2)
     
  
