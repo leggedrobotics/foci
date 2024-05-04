@@ -71,22 +71,21 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points,num_samples, obstacle_means, covs_det, covs_inv )
     obstacle_cost = convolution_functor(curve)
 
-    cost =convolution_functor(curve) #length_cost +  100 * obstacle_cost + 0.1 *accel_cost
+    cost =length_cost +  100 * obstacle_cost + 0.1 *accel_cost
 
     # define optimization solver
-    nlp = {"x": dec_vars, "f": cost, "g": cons, "p": params}
-    ipop_options = {"ipopt.print_level": 0,
+    nlp = {"x": dec_vars, "f": cost}
+    ipopt_options = {"ipopt.print_level": 3,
                     "ipopt.max_iter": 100, 
-                    "ipopt.tol": 1e-1, 
+                    "ipopt.tol": 1e-6, 
                     "print_time": 0, 
-                    "ipopt.acceptable_tol": 1e-1, 
-                    "ipopt.acceptable_obj_change_tol": 1e-1, 
-                    "ipopt.hessian_approximation": "limited-memory", 
-                    "ipopt.mu_strategy": "adaptive"}
+                    "ipopt.acceptable_tol": 1e-6, 
+                    "ipopt.hessian_approximation": "limited-memory",
+                    }
 
-    solver = cas.nlpsol("solver", "ipopt", nlp, ipop_options)
+    solver = cas.nlpsol("solver", "ipopt", nlp, ipopt_options)
 
-    return solver, lbg, ubg
+    return solver, np.array([]), np.array([])
 
 
 

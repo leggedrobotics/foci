@@ -6,12 +6,14 @@ wp.init()
 wp.set_device("cuda:0")
 
 
+from gsplat_traj_optim.splines.bsplines import spline_eval
+
+
 class ConvolutionFunctorWarp(Callback):
     def __init__(self, name, dim, num_points ,obstacle_means, covs_det, covs_inv,opts={}):
         Callback.__init__(self)
 
 
-        print("INITIALIZING BASE FUNCTION")
 
 
         assert dim == 3, "Currently only 3D is supported"
@@ -69,7 +71,6 @@ class ConvolutionFunctorWarp(Callback):
 
     # Evaluate numerically
     def eval(self, arg):
-        print("EVALUATEING BASE FUNCTION")
 
 
         points= np.array(arg[0])
@@ -146,8 +147,6 @@ class ConvolutionFunctorWarp(Callback):
 
 
             def eval(self, arg):
-                print("EVALUATEING JAC FUNCTION")
-
                 points = np.array(arg[0])
                 self.points_gpu = wp.from_numpy(points, dtype=wp.vec3)
                 self.intermediate.zero_()
@@ -181,6 +180,8 @@ if __name__ == "__main__":
     covs_inv = covs.copy()
     covs_det = np.ones(num_obstacles)
 
+    print(covs_inv.shape)
+
     obstacle_means = np.ones((num_obstacles, dim))
     points = np.ones((num_points, dim)) * 0.9 
 
@@ -206,10 +207,15 @@ if __name__ == "__main__":
     # params
     offset = MX.sym("offset", num_points, dim)
 
+
+
     # define optimization solver    
     points_sym = MX.sym("points",num_points, dim)
+
+    curve = spline_eval(points_sym, 30)
+
     dec_vars = vertcat(vec(points_sym))
-    cost = -conv(points_sym + offset) 
+    cost = conv(curve + offset) 
 
     
 
@@ -217,17 +223,24 @@ if __name__ == "__main__":
 
     ipopt_options = {"ipopt.print_level": 3,
                     "ipopt.max_iter": 100, 
-                    "ipopt.tol": 1e-6, 
+                    "ipopt.tol": 1e-9, 
                     "print_time": 0, 
-                    "ipopt.acceptable_tol": 1e-6, 
+                    "ipopt.acceptable_tol": 1e-9, 
                     "ipopt.hessian_approximation": "limited-memory",
                     }
 
     solver = nlpsol("solver", "ipopt", nlp, ipopt_options)
 
-    res = solver(x0 = points.flatten(), p =  0.6 * np.ones((num_points,dim)).flatten())
+    res = solver(x0 = 0.95 * np.ones((num_points,dim)).flatten(), p =  0.6 * np.ones((num_points,dim)).flatten())
     print(res["x"])
 
+
+    control_points_opt = np.array(res['x']).reshape(num_points, dim)
+    opt_curve = spline_eval(control_points_opt, 200)
+    
+    print(grad(control_points_opt))
+
+    print(opt_curve)
 
         
 
