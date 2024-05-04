@@ -84,3 +84,38 @@ def create_curve_robot_obstacle_convolution_functor(num_samples, num_obstacles, 
     out = cas.sum2(out_map)/ num_samples # Does that change solver speed?
     print("outshape",out.shape)   
     return cas.Function("robot_obstacle_convolution", [curve, robot_cov, obstacle_means, obstacle_covs], [out])
+
+
+
+if __name__ == "__main__":
+    from casadi import *
+    dim = 3
+    num_obstacles = 40
+    num_points = 30
+
+    robot_cov = np.eye(dim)
+    covs = np.array([np.eye(dim) for _ in range(num_obstacles)])
+    covs_sum = covs + robot_cov
+
+    covs_inv = covs.copy()
+    covs_det = np.ones(num_obstacles)
+
+    obstacle_means = np.ones((dim, num_obstacles))
+    points = np.zeros((dim, num_points))
+
+    print("Here")
+
+    conv = create_curve_robot_obstacle_convolution_functor(num_points, num_obstacles, dim)
+
+    hello = conv(points.T, robot_cov, obstacle_means, covs)
+    print(hello)
+    print(hello)
+
+    y = MX.sym("curve", dim, num_points)
+    jac = Function("jac", [y], [jacobian(conv(y), y)])
+
+    out = jac(points)
+
+    print(out.shape)
+
+
