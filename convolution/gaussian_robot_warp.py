@@ -6,7 +6,6 @@ wp.init()
 wp.set_device("cuda:0")
 
 
-
 class Convolution(Callback):
     def __init__(self, name, dim, num_points ,obstacle_means, covs_det, covs_inv,opts={}):
         Callback.__init__(self)
@@ -76,7 +75,7 @@ class Convolution(Callback):
         wp.utils.array_sum(self.intermediate, out = self.out)
 
         
-        out = self.out.numpy()[0]
+        out = (1/(self.num_obstacles * self.num_points))  * self.out.numpy()[0]
         return [out]
 
 
@@ -137,7 +136,6 @@ class Convolution(Callback):
 
 
             def eval(self, arg):
-                print("input_jac",arg)
                 points = np.array(arg[0])
                 self.points_gpu = wp.from_numpy(points, dtype=wp.vec3)
                 self.intermediate.zero_()
@@ -148,8 +146,7 @@ class Convolution(Callback):
                         inputs = [self.points_gpu, self.obstacle_means, self.covs_det, self.covs_inv,self.intermediate])
                 
                 wp.utils.array_sum(self.intermediate, out = self.out, axis = 1)
-                out = self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
-                print("Returning from eval")
+                out = (1/(self.num_obstacles * self.num_points)) * self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
                 return [out]
 
 
@@ -196,46 +193,38 @@ class Convolution(Callback):
 
 
 
-# Define the problem
-dim = 3
-num_obstacles = 10
-num_points = 5
 
-robot_cov = np.eye(dim)
-covs = np.array([np.eye(dim) for _ in range(num_obstacles)])
-covs_sum = covs + robot_cov
+if __name__ == "__main__":
+    # Define the problem
+    dim = 3
+    num_obstacles = 1_000_000
+    num_points = 30
 
-
-covs_inv = covs.copy()
-covs_det = np.ones(num_obstacles)
-
-# for i in range(num_obstacles):
-#     print("hello")
-#     covs_det[i] = np.linalg.det(covs_sum[i])
-# #     covs_inv[i] = np.linalg.inv(covs_sum[i])
-
-obstacle_means = np.ones((num_obstacles, dim))
-points = np.zeros((num_points, dim)) 
-
-print("Here")
-
-conv = Convolution("conv", dim, num_points, obstacle_means, covs_det, covs_inv)
-
-print(conv(points))
-
-y = MX.sym("y", num_points, dim)
-jac = Function("jac_conv", [y], [jacobian(conv(y), y)])
-
-j = jac(points)
-print(j)
-print(j.shape)
+    robot_cov = np.eye(dim)
+    covs = np.array([np.eye(dim) for _ in range(num_obstacles)])
+    covs_sum = covs + robot_cov
 
 
-import timeit
-num_tests = 100
-time = timeit.timeit(lambda: conv(points), number=num_tests)
-print(time/num_tests)
+    covs_inv = covs.copy()
+    covs_det = np.ones(num_obstacles)
+
+    obstacle_means = np.ones((num_obstacles, dim))
+    points = np.zeros((num_points, dim)) 
+
+    conv = Convolution("conv", dim, num_points, obstacle_means, covs_det, covs_inv)
 
 
-    
+    y = MX.sym("y", num_points, dim)
+    jac = Function("jac_conv", [y], [jacobian(conv(y), y)])
+
+    j = jac(points)
+
+
+    import timeit
+    num_tests = 100
+    time = timeit.timeit(lambda: jac(points), number=num_tests)
+    print(time/num_tests)
+
+
+        
 
