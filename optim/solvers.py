@@ -10,8 +10,9 @@ logging.basicConfig(level =logging.INFO)
 
 from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
+from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
 
-def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_samples=30, expand=False, parallelization="openmp"):
+def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_control_points=3, num_samples=30,expand=False, parallelization="openmp"):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
@@ -30,14 +31,8 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
     # define optimization parameters
     start_pos = SYM_TYPE.sym("start_pos", dim_control_points, 1)
     end_pos = SYM_TYPE.sym("end_pos", dim_control_points, 1)
-    obstacle_means = SYM_TYPE.sym("obstacle_means", dim_control_points, n_gaussians)
-    obstacle_covs = SYM_TYPE.sym("obstacle_covs", dim_control_points, dim_control_points *  n_gaussians)
-    robot_cov = SYM_TYPE.sym("robot_cov", dim_control_points, dim_control_points)
     params = cas.vertcat(cas.vec(start_pos),
                     cas.vec(end_pos),
-                    cas.vec(obstacle_means),
-                    cas.vec(obstacle_covs),
-                    cas.vec(robot_cov)
     )
 
     # define optimization variables
@@ -71,18 +66,23 @@ def create_solver(num_control_points, n_gaussians, dim_control_points=3, num_sam
 
     accel_cost = cas.sum1(cas.sum2(ddcurve**2))
 
-    convolution_functor = create_curve_robot_obstacle_convolution_functor(num_samples, n_gaussians, dim_control_points, parallelization = parallelization)
-    if expand:
-        convolution_functor = convolution_functor.expand()
-    obstacle_cost = convolution_functor(curve.T, robot_cov, obstacle_means, obstacle_covs)
 
+    print("Hello")
+    convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points,num_samples, obstacle_means, covs_det, covs_inv )
+    obstacle_cost = convolution_functor(curve)
 
-
-    cost = length_cost +  100 * obstacle_cost + 0.1 *accel_cost
+    cost =convolution_functor(curve) #length_cost +  100 * obstacle_cost + 0.1 *accel_cost
 
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "g": cons, "p": params}
-    ipop_options = {"ipopt.print_level": 3, "ipopt.max_iter": 100, "ipopt.tol": 1e-1, "print_time": 0, "ipopt.acceptable_tol": 1e-1, "ipopt.acceptable_obj_change_tol": 1e-1, "ipopt.hessian_approximation": "limited-memory", "ipopt.mu_strategy": "adaptive"}
+    ipop_options = {"ipopt.print_level": 0,
+                    "ipopt.max_iter": 100, 
+                    "ipopt.tol": 1e-1, 
+                    "print_time": 0, 
+                    "ipopt.acceptable_tol": 1e-1, 
+                    "ipopt.acceptable_obj_change_tol": 1e-1, 
+                    "ipopt.hessian_approximation": "limited-memory", 
+                    "ipopt.mu_strategy": "adaptive"}
 
     solver = cas.nlpsol("solver", "ipopt", nlp, ipop_options)
 

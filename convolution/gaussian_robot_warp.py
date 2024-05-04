@@ -6,9 +6,12 @@ wp.init()
 wp.set_device("cuda:0")
 
 
-class Convolution(Callback):
+class ConvolutionFunctorWarp(Callback):
     def __init__(self, name, dim, num_points ,obstacle_means, covs_det, covs_inv,opts={}):
         Callback.__init__(self)
+
+
+        print("INITIALIZING BASE FUNCTION")
 
 
         assert dim == 3, "Currently only 3D is supported"
@@ -55,13 +58,20 @@ class Convolution(Callback):
     def get_n_out(self): return 1
 
     def get_sparsity_in(self,i):
-        return Sparsity.dense(self.num_points,self.dim)
+        if i == 0:
+            return Sparsity.dense(self.num_points,self.dim)
+        else:
+            return Sparsity.dense(6,1) # params
+    
 
     def get_sparsity_out(self,i):
         return Sparsity.dense(1,1)
 
     # Evaluate numerically
     def eval(self, arg):
+        print("EVALUATEING BASE FUNCTION")
+
+
         points= np.array(arg[0])
         self.points_gpu = wp.from_numpy(points, dtype=wp.vec3)
         self.intermediate.zero_()
@@ -82,8 +92,6 @@ class Convolution(Callback):
     def has_jacobian(self): 
         return True
     def get_jacobian(self,name,inames,onames,opts):
-        
-
         class JacFun(Callback):
             def __init__(self, dim, num_points ,obstacle_means_gpu, covs_det_gpu, covs_inv_gpu ,opts={}):
                 Callback.__init__(self)
@@ -127,6 +135,8 @@ class Convolution(Callback):
                     return Sparsity.dense(1,1)
                 elif n == "x":
                     return Sparsity.dense(self.num_points,self.dim)
+                elif n == "p":
+                    return Sparsity.dense(6,1)
 
                 else:
                     return Sparsity.dense(0,0)
@@ -136,6 +146,8 @@ class Convolution(Callback):
 
 
             def eval(self, arg):
+                print("EVALUATEING JAC FUNCTION")
+
                 points = np.array(arg[0])
                 self.points_gpu = wp.from_numpy(points, dtype=wp.vec3)
                 self.intermediate.zero_()
@@ -149,45 +161,6 @@ class Convolution(Callback):
                 out = (1/(self.num_obstacles * self.num_points)) * self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
                 return [out]
 
-
-
-
-    #         def has_jacobian(self): 
-    #                 return True
-    #         def get_jacobian(self,name,inames,onames,opts):
-    #             print("Iname", inames)
-    #             print("Onames", onames)
-
-
-    #             print("Creating HessFun")
-    #             class HessFun(Callback):
-    #                 def __init__(self, x_gpu,opts={}):
-    #                     Callback.__init__(self)
-    #                     self.construct(name, opts)
-
-    #                     self.x_gpu = x_gpu
-    #                     self.dim = len(x_gpu)
-    #                     self.y_gpu = wp.array([0], dtype=float)
-    #                     self.out = wp.array([0], dtype=float)
-
-
-    #                 def get_n_in(self): return 3
-    #                 def get_n_out(self): return 2
-
-    #                 def get_sparsity_in(self,i):
-    #                     return Sparsity.dense(1,1)
-
-    #                 def get_sparsity_out(self,i):
-    #                     return Sparsity.dense(1,1)
-
-    #                 def eval(self, arg):
-    #                     out = self.dim * 2.0
-    #                     return [out,0]
-    #             self.jac_callback = HessFun(self.x_gpu)
-    #             print("Returning HessFun")
-    #             return self.jac_callback
-
-
         self.jac_callback = JacFun(self.dim, self.num_points, self.obstacle_means, self.covs_det, self.covs_inv)
         return self.jac_callback
 
@@ -197,11 +170,11 @@ class Convolution(Callback):
 if __name__ == "__main__":
     # Define the problem
     dim = 3
-    num_obstacles = 1_000_000
+    num_obstacles = 66_416
     num_points = 30
 
     robot_cov = np.eye(dim)
-    covs = np.array([np.eye(dim) for _ in range(num_obstacles)])
+    covs = np.array([np.eye(dim) * 10 for _ in range(num_obstacles)])
     covs_sum = covs + robot_cov
 
 
@@ -209,21 +182,51 @@ if __name__ == "__main__":
     covs_det = np.ones(num_obstacles)
 
     obstacle_means = np.ones((num_obstacles, dim))
-    points = np.zeros((num_points, dim)) 
+    points = np.ones((num_points, dim)) * 0.9 
 
-    conv = Convolution("conv", dim, num_points, obstacle_means, covs_det, covs_inv)
+    conv = ConvolutionFunctorWarp("conv", dim, num_points, obstacle_means, covs_det, covs_inv)
 
-
+ 
     y = MX.sym("y", num_points, dim)
     jac = Function("jac_conv", [y], [jacobian(conv(y), y)])
+    grad = Function("grad_conv", [y], [gradient(conv(y), y)])
 
+    print(conv(points))
     j = jac(points)
+    g = grad(points)
+    print(g)
 
 
-    import timeit
-    num_tests = 100
-    time = timeit.timeit(lambda: jac(points), number=num_tests)
-    print(time/num_tests)
+    # import timeit
+    # num_tests = 100
+    # time = timeit.timeit(lambda: jac(points), number=num_tests)
+    # print(time/num_tests)
+
+
+    # params
+    offset = MX.sym("offset", num_points, dim)
+
+    # define optimization solver    
+    points_sym = MX.sym("points",num_points, dim)
+    dec_vars = vertcat(vec(points_sym))
+    cost = -conv(points_sym + offset) 
+
+    
+
+    nlp = {"x": dec_vars, "f": cost, "p": vertcat(vec(offset))}
+
+    ipopt_options = {"ipopt.print_level": 3,
+                    "ipopt.max_iter": 100, 
+                    "ipopt.tol": 1e-6, 
+                    "print_time": 0, 
+                    "ipopt.acceptable_tol": 1e-6, 
+                    "ipopt.hessian_approximation": "limited-memory",
+                    }
+
+    solver = nlpsol("solver", "ipopt", nlp, ipopt_options)
+
+    res = solver(x0 = points.flatten(), p =  0.6 * np.ones((num_points,dim)).flatten())
+    print(res["x"])
 
 
         
