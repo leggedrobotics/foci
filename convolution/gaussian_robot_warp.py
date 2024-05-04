@@ -6,6 +6,9 @@ wp.init()
 wp.set_device("cuda:0")
 
 
+
+EPS = 1e-6
+
 from gsplat_traj_optim.splines.bsplines import spline_eval
 
 
@@ -50,7 +53,7 @@ class ConvolutionFunctorWarp(Callback):
             m,n = wp.tid() # m is the point index, n is the obstacle index
 
             diff = points[m] - obstacle_means[n]
-            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) / (wp.sqrt(2.0 * wp.pi) * covs_det[n])
+            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) / (wp.sqrt(2.0 * wp.pi) * covs_det[n] + EPS)
             wp.atomic_add(intermediate, n, normal)
             
         self.f = f
@@ -118,7 +121,7 @@ class ConvolutionFunctorWarp(Callback):
                     m,n = wp.tid() # m is the point index, n is the obstacle index
 
                     diff = points[m] - obstacle_means[n]
-                    normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) / (wp.sqrt(2.0 * wp.pi) * covs_det[n])
+                    normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) / (wp.sqrt(2.0 * wp.pi) * covs_det[n] + EPS)
 
                     sub_gradient = -normal * covs_inv[n] @ diff
                     intermediate[m,n] = sub_gradient

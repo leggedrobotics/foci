@@ -12,7 +12,7 @@ from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
 from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
 
-def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_control_points=3, num_samples=30,expand=False, parallelization="openmp"):
+def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_control_points=3, num_samples=30):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
@@ -52,11 +52,11 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     
     cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.1]))
+    ubg = np.concatenate((ubg, [0.2]))
     
     cons = cas.vertcat(cons, (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.1]))
+    ubg = np.concatenate((ubg, [0.2]))
 
 
     # define optimization objective
@@ -71,21 +71,25 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points,num_samples, obstacle_means, covs_det, covs_inv )
     obstacle_cost = convolution_functor(curve)
 
-    cost =length_cost +  100 * obstacle_cost + 0.1 *accel_cost
+    cost =  length_cost + 100 * obstacle_cost + accel_cost
+
+
+    print(cost)
+    print(convolution_functor)
 
     # define optimization solver
-    nlp = {"x": dec_vars, "f": cost}
+    nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
     ipopt_options = {"ipopt.print_level": 3,
                     "ipopt.max_iter": 100, 
-                    "ipopt.tol": 1e-6, 
+                    "ipopt.tol": 1e-2, 
                     "print_time": 0, 
-                    "ipopt.acceptable_tol": 1e-6, 
+                    "ipopt.acceptable_tol": 1e-1, 
                     "ipopt.hessian_approximation": "limited-memory",
                     }
 
-    solver = cas.nlpsol("solver", "ipopt", nlp, ipopt_options)
+    solver = cas.nlpsol("solver", "ipopt", nlp, ipopt_options) 
 
-    return solver, np.array([]), np.array([])
+    return solver, lbg,ubg , convolution_functor
 
 
 
