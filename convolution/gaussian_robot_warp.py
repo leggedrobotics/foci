@@ -7,7 +7,7 @@ wp.set_device("cuda:0")
 
 
 
-EPS = 1e-6
+EPS = 1e-9
 
 from gsplat_traj_optim.splines.bsplines import spline_eval
 

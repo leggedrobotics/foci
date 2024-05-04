@@ -52,11 +52,11 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     
     cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.2]))
+    ubg = np.concatenate((ubg, [0.05]))
     
     cons = cas.vertcat(cons, (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.2]))
+    ubg = np.concatenate((ubg, [0.05]))
 
 
     # define optimization objective
@@ -80,10 +80,11 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
     ipopt_options = {"ipopt.print_level": 3,
-                    "ipopt.max_iter": 100, 
+                    "ipopt.max_iter": 300, 
                     "ipopt.tol": 1e-2, 
                     "print_time": 0, 
                     "ipopt.acceptable_tol": 1e-1, 
+                    "ipopt.acceptable_iter": 2,
                     "ipopt.hessian_approximation": "limited-memory",
                     }
 
