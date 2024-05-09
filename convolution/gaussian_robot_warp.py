@@ -16,9 +16,6 @@ class ConvolutionFunctorWarp(Callback):
     def __init__(self, name, dim, num_points ,obstacle_means, covs_det, covs_inv,opts={}):
         Callback.__init__(self)
 
-
-
-
         assert dim == 3, "Currently only 3D is supported"
 
         assert len(obstacle_means) == len(covs_det) and len(covs_det) == len(covs_inv), "The number of obstacles should be the same for all input arrays"  
@@ -53,7 +50,7 @@ class ConvolutionFunctorWarp(Callback):
             m,n = wp.tid() # m is the point index, n is the obstacle index
 
             diff = points[m] - obstacle_means[n]
-            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) / (wp.sqrt(2.0 * wp.pi) * covs_det[n] + EPS)
+            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) 
             wp.atomic_add(intermediate, n, normal)
             
         self.f = f
@@ -87,9 +84,8 @@ class ConvolutionFunctorWarp(Callback):
                 inputs = [self.points_gpu, self.obstacle_means, self.covs_det, self.covs_inv,self.intermediate])
 
         wp.utils.array_sum(self.intermediate, out = self.out)
-
-        
-        out = (1/(self.num_obstacles * self.num_points))  * self.out.numpy()[0]
+        wp.sync()
+        out =  self.out.numpy()[0]
         return [out]
 
 
@@ -121,7 +117,7 @@ class ConvolutionFunctorWarp(Callback):
                     m,n = wp.tid() # m is the point index, n is the obstacle index
 
                     diff = points[m] - obstacle_means[n]
-                    normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) / (wp.sqrt(2.0 * wp.pi) * covs_det[n] + EPS)
+                    normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) 
 
                     sub_gradient = -normal * covs_inv[n] @ diff
                     intermediate[m,n] = sub_gradient
@@ -154,13 +150,13 @@ class ConvolutionFunctorWarp(Callback):
                 self.points_gpu = wp.from_numpy(points, dtype=wp.vec3)
                 self.intermediate.zero_()
                 self.out.zero_()
-
                 wp.launch(kernel = self.f_jac,
                         dim = (self.num_points, self.num_obstacles),
                         inputs = [self.points_gpu, self.obstacle_means, self.covs_det, self.covs_inv,self.intermediate])
                 
                 wp.utils.array_sum(self.intermediate, out = self.out, axis = 1)
-                out = (1/(self.num_obstacles * self.num_points)) * self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
+                out = self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
+                wp.sync()
                 return [out]
 
         self.jac_callback = JacFun(self.dim, self.num_points, self.obstacle_means, self.covs_det, self.covs_inv)
@@ -183,7 +179,6 @@ if __name__ == "__main__":
     covs_inv = covs.copy()
     covs_det = np.ones(num_obstacles)
 
-    print(covs_inv.shape)
 
     obstacle_means = np.ones((num_obstacles, dim))
     points = np.ones((num_points, dim)) * 0.9 
@@ -195,10 +190,8 @@ if __name__ == "__main__":
     jac = Function("jac_conv", [y], [jacobian(conv(y), y)])
     grad = Function("grad_conv", [y], [gradient(conv(y), y)])
 
-    print(conv(points))
     j = jac(points)
     g = grad(points)
-    print(g)
 
 
     # import timeit
