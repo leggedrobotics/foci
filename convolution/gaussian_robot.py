@@ -13,13 +13,11 @@ def create_normal_pdf_functor(dim):
     cov_inv = SYM_TYPE.sym("cov_inv", dim , dim )
 
 
-    pdf = cas.exp(-0.5 * (x-mu).T@ cov_inv@ (x-mu)) / (cas.sqrt(2 * cas.pi) * cov_det)
+    pdf = cas.exp(-0.5 * (x-mu).T@ cov_inv@ (x-mu)) * 1000/cov_det 
 
-    print("cov_inv shape",cov_inv.shape)
 
     return cas.Function("normal_pdf", [x, mu, cov_det, cov_inv], [pdf])
 
-    print("pdf shape",pdf.shape)
 
 def create_matrix_inverse_functor(dim):
     SYM_TYPE = cas.SX
@@ -54,8 +52,6 @@ def create_robot_obstacle_convolution_functor(num_obstacles, dim, parallelizatio
     covs_sum_det = det_functor_map(covs_sum)
     covs_sum_inv = inverse_functor_map(covs_sum)
 
-    print("covs_sum_inv shape",covs_sum_inv.shape) 
-    print("covs_sum_det shape",covs_sum_det.shape)  
     
     
     pdf_evals = pdf_functor_map(robot_mean, obstacle_means, covs_sum_det, covs_sum_inv)
@@ -79,10 +75,8 @@ def create_curve_robot_obstacle_convolution_functor(num_samples, num_obstacles, 
 
     convolution_map = convolution_functor.map(num_samples, parallelization)
     out_map = convolution_map(curve, robot_cov, obstacle_means, obstacle_covs)
-    print("out_map shape",out_map.shape)
 
     out = cas.sum2(out_map)/ num_samples # Does that change solver speed?
-    print("outshape",out.shape)   
     return cas.Function("robot_obstacle_convolution", [curve, robot_cov, obstacle_means, obstacle_covs], [out])
 
 
@@ -103,19 +97,15 @@ if __name__ == "__main__":
     obstacle_means = np.ones((dim, num_obstacles))
     points = np.zeros((dim, num_points))
 
-    print("Here")
 
     conv = create_curve_robot_obstacle_convolution_functor(num_points, num_obstacles, dim)
 
     hello = conv(points.T, robot_cov, obstacle_means, covs)
-    print(hello)
-    print(hello)
 
     y = MX.sym("curve", dim, num_points)
     jac = Function("jac", [y], [jacobian(conv(y), y)])
 
     out = jac(points)
 
-    print(out.shape)
 
 

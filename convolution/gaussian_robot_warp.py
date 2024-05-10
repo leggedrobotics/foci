@@ -23,7 +23,6 @@ class ConvolutionFunctorWarp(Callback):
         assert len(obstacle_means) > 0, "The number of obstacles should be greater than 0"
         assert covs_inv.shape[1:] == (dim,dim), "The shape of the covs_inv should be (dim,dim)"
 
-        print("Number of obstacles: ", len(obstacle_means)) 
         
         self.dim = dim
         self.num_points = num_points
@@ -51,7 +50,7 @@ class ConvolutionFunctorWarp(Callback):
             m,n = wp.tid() # m is the point index, n is the obstacle index
 
             diff = points[m] - obstacle_means[n]
-            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff))
+            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) * 1000.0/covs_det[n]
             wp.atomic_add(intermediate, n, normal)
             
         self.f = f
@@ -72,20 +71,17 @@ class ConvolutionFunctorWarp(Callback):
 
     # Evaluate numerically
     def eval(self, arg):
-
-
         points= np.array(arg[0])
         self.points_gpu = wp.from_numpy(points, dtype=wp.vec3)
         self.intermediate.zero_()
         self.out.zero_()
-
 
         wp.launch(kernel = self.f,
                 dim = (self.num_points, self.num_obstacles),
                 inputs = [self.points_gpu, self.obstacle_means, self.covs_det, self.covs_inv,self.intermediate])
 
         wp.utils.array_sum(self.intermediate, out = self.out)
-        out =  self.out.numpy()[0]
+        out =  self.out.numpy()[0] / (self.num_obstacles * self.num_points)
         return [out]
 
 
@@ -117,7 +113,7 @@ class ConvolutionFunctorWarp(Callback):
                     m,n = wp.tid() # m is the point index, n is the obstacle index
 
                     diff = points[m] - obstacle_means[n]
-                    normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) 
+                    normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) * 1000.0/covs_det[n]
 
                     sub_gradient = -normal * covs_inv[n] @ diff
                     intermediate[m,n] = sub_gradient
@@ -154,8 +150,10 @@ class ConvolutionFunctorWarp(Callback):
                         dim = (self.num_points, self.num_obstacles),
                         inputs = [self.points_gpu, self.obstacle_means, self.covs_det, self.covs_inv,self.intermediate])
                 
-                wp.utils.array_sum(self.intermediate, out = self.out, axis = 1)
-                out = self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
+                # wp.utils.array_sum(self.intermediate, out = self.out, axis = 1)
+                out = wp.utils.array_sum(self.intermediate, axis = 1)
+                out = out.numpy().transpose().reshape(1, self.num_points * self.dim)                
+                out = out / (self.num_obstacles * self.num_points)
                 return [out]
 
         self.jac_callback = JacFun(self.dim, self.num_points, self.obstacle_means, self.covs_det, self.covs_inv)
@@ -234,7 +232,6 @@ if __name__ == "__main__":
     control_points_opt = np.array(res['x']).reshape(num_points, dim)
     opt_curve = spline_eval(control_points_opt, 200)
     
-    print(grad(control_points_opt))
 
     print(opt_curve)
 
