@@ -41,7 +41,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     
     # define helpful mappings
     curve = spline_eval(control_points, num_samples)
-    dcurve = spline_eval(control_points, num_samples, derivate =1)
+    # dcurve = spline_eval(control_points, num_samples, derivate =1)
     ddcurve = spline_eval(control_points, num_samples, derivate =2)
     
  
