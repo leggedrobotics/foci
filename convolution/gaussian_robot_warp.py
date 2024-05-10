@@ -5,7 +5,8 @@ import numpy as np
 wp.init()
 wp.set_device("cuda:0")
 
-
+#Integral over Gaussians https://arxiv.org/pdf/1811.04751v1
+# https://web.ist.utl.pt/susanavinga/renyi/convolution_normal.pdf
 
 EPS = 1e-9
 
@@ -22,7 +23,7 @@ class ConvolutionFunctorWarp(Callback):
         assert len(obstacle_means) > 0, "The number of obstacles should be greater than 0"
         assert covs_inv.shape[1:] == (dim,dim), "The shape of the covs_inv should be (dim,dim)"
 
-        
+        print("Number of obstacles: ", len(obstacle_means)) 
         
         self.dim = dim
         self.num_points = num_points
@@ -50,7 +51,7 @@ class ConvolutionFunctorWarp(Callback):
             m,n = wp.tid() # m is the point index, n is the obstacle index
 
             diff = points[m] - obstacle_means[n]
-            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff)) 
+            normal =  wp.exp(-0.5 * wp.dot(diff, covs_inv[n] @ diff))
             wp.atomic_add(intermediate, n, normal)
             
         self.f = f
@@ -84,7 +85,6 @@ class ConvolutionFunctorWarp(Callback):
                 inputs = [self.points_gpu, self.obstacle_means, self.covs_det, self.covs_inv,self.intermediate])
 
         wp.utils.array_sum(self.intermediate, out = self.out)
-        wp.sync()
         out =  self.out.numpy()[0]
         return [out]
 
@@ -156,7 +156,6 @@ class ConvolutionFunctorWarp(Callback):
                 
                 wp.utils.array_sum(self.intermediate, out = self.out, axis = 1)
                 out = self.out.numpy().flatten().reshape(1, self.num_points * self.dim)
-                wp.sync()
                 return [out]
 
         self.jac_callback = JacFun(self.dim, self.num_points, self.obstacle_means, self.covs_det, self.covs_inv)
@@ -223,6 +222,7 @@ if __name__ == "__main__":
                     "print_time": 0, 
                     "ipopt.acceptable_tol": 1e-9, 
                     "ipopt.hessian_approximation": "limited-memory",
+                    "ipopt.linear_solver": "ma27",
                     }
 
     solver = nlpsol("solver", "ipopt", nlp, ipopt_options)
