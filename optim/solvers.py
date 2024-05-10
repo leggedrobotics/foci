@@ -76,14 +76,14 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [800]))
+    ubg = np.concatenate((ubg, [500]))
 
 
 
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
     ipopt_options = {"ipopt.print_level": 3,
-                    "ipopt.max_iter":50, 
+                    "ipopt.max_iter":100, 
                     "ipopt.tol": 1e-1, 
                     "print_time": 0, 
                     "ipopt.acceptable_tol": 1e-1, 
