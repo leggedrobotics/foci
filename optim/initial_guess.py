@@ -119,7 +119,15 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
         ubg = np.concatenate((ubg, [path_arr[-1,i] +0.005]))
 
 
-    ipop_options = {"ipopt.print_level": 0, "ipopt.max_iter": 100, "ipopt.tol": 1e-3, "print_time": 0, "ipopt.acceptable_tol": 1e-3, "ipopt.acceptable_obj_change_tol": 1e-3, "ipopt.hessian_approximation": "limited-memory", "ipopt.mu_strategy": "adaptive"}
+    ipop_options = {"ipopt.print_level": 0,
+                     "ipopt.max_iter": 100, 
+                     "ipopt.tol": 1e-3, 
+                     "print_time": 0, 
+                     "ipopt.acceptable_tol": 1e-3, 
+                     "ipopt.acceptable_obj_change_tol": 1e-3, 
+                     "ipopt.hessian_approximation": "limited-memory", 
+                     "ipopt.mu_strategy": "adaptive", 
+                     "ipopt.linear_solver": "ma27"}
 
     # define solver
     nlp = {'x': dec_vars, 'f': cost, 'g': cons}
