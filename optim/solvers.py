@@ -12,7 +12,7 @@ from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
 from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
 
-def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_control_points=3, num_samples=30):
+def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinematics,  dim_control_points=3, dim_rotation = 1,num_samples=30):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
@@ -28,6 +28,8 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
 
     SYM_TYPE = cas.MX  
 
+    dim_control_points = dim_control_points + dim_rotation
+
     # define optimization parameters
     start_pos = SYM_TYPE.sym("start_pos", dim_control_points, 1)
     end_pos = SYM_TYPE.sym("end_pos", dim_control_points, 1)
@@ -41,48 +43,43 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     
     # define helpful mappings
     curve = spline_eval(control_points, num_samples)
-    dcurve = spline_eval(control_points, num_samples, derivate =1)
     ddcurve = spline_eval(control_points, num_samples, derivate =2)
-    
- 
+
+
+    kinematics_functor = kinematics.map(num_samples, "openmp") 
+
     # define optimization constraints
     lbg = []
     ubg = []
     cons = SYM_TYPE([])
     
-    cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2)
+    cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2 + (curve[0,3] - start_pos[3]) ** 2)
     lbg = np.concatenate((lbg, [0]))
     ubg = np.concatenate((ubg, [0.05]))
     
-    cons = cas.vertcat(cons, (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2)
+    cons = cas.vertcat(cons, (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2 + (curve[-1,3] - end_pos[3]) ** 2)
     lbg = np.concatenate((lbg, [0]))
     ubg = np.concatenate((ubg, [0.05]))
 
 
     # define optimization objective
-    length_cost = 0
-    for i in range(num_samples-1):
-        length_cost = length_cost + (curve[i,0] - curve[i+1,0]) ** 2 + (curve[i,1] - curve[i+1,1]) ** 2
-
     accel_cost = cas.sum1(cas.sum2(ddcurve**2))
-    vel_cost = cas.sum1(cas.sum2(dcurve**2))
 
 
-    convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points,num_samples, obstacle_means, covs_det, covs_inv )
-    obstacle_cost = convolution_functor(curve)
+    collision_points = kinematics_functor(curve.T).T
 
-    cost =   accel_cost
+    convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points -1,num_samples*3, obstacle_means, covs_det, covs_inv)
+    obstacle_cost = convolution_functor(collision_points)
 
+    cost = accel_cost #+ cas.sum1(curve[:,3]**2) 
 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.01]))
-
-
-
+    ubg = np.concatenate((ubg, [0.1]))
+    
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
-    ipopt_options = {"ipopt.print_level": 3,
+    ipopt_options = {"ipopt.print_level": 5,
                     "ipopt.max_iter":100, 
                     "ipopt.tol": 1e-1, 
                     "print_time": 0, 

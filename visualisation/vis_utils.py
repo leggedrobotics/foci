@@ -74,8 +74,11 @@ class EnvAndPathVis():
             sphere.transform(translation)
             self.components.append(sphere)
                     
-    def add_gaussian_path(self, means, cov, color = [0,1,0]):
-        self.add_curve(means, color)
+    def add_gaussian_path(self, curve, cov, kinematics,color = [0,1,0]):
+        kinematics_functor = kinematics.map(curve.shape[0], "openmp")
+        means = np.array(kinematics_functor(curve.T).T)
+
+        self.add_curve(curve[:,:3], color)
         eigval, eigvec = np.linalg.eig(cov.reshape(3,3))
         max_eigval = np.max(eigval)
         radius = np.sqrt(max_eigval)
