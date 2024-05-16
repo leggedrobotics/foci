@@ -59,6 +59,17 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
     ubg = np.concatenate((ubg, [0.05]))
 
 
+    for i in range(num_samples):
+        cons = cas.vertcat(cons, curve[i,1])
+        lbg = np.concatenate((lbg, [5]))
+        ubg = np.concatenate((ubg, [7]))
+        
+        cons = cas.vertcat(cons, curve[i,2])
+        lbg = np.concatenate((lbg, [-10]))
+        ubg = np.concatenate((ubg, [3]))
+
+
+
     # define optimization objective
     length_cost = 0
     for i in range(num_samples-1):
@@ -76,7 +87,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv,  dim_c
 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.01]))
+    ubg = np.concatenate((ubg, [2]))
 
 
 
