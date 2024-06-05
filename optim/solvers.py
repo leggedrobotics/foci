@@ -61,6 +61,10 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     lbg = np.concatenate((lbg, [0]))
     ubg = np.concatenate((ubg, [0.05]))
 
+    for i in range(curve.shape[0]):
+        cons = cas.vertcat(cons, curve[i,2])
+        lbg = np.concatenate((lbg, [0.9]))
+        ubg = np.concatenate((ubg, [1.1]))
 
     # define optimization objective
     accel_cost = cas.sum1(cas.sum2(ddcurve**2))
@@ -75,12 +79,12 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.1]))
+    ubg = np.concatenate((ubg, [1]))
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
     ipopt_options = {"ipopt.print_level": 5,
-                    "ipopt.max_iter":100, 
+                    "ipopt.max_iter":200, 
                     "ipopt.tol": 1e-1, 
                     "print_time": 0, 
                     "ipopt.acceptable_tol": 1e-1, 

@@ -1,0 +1,97 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import open3d as o3d
+import os
+import casadi as cas
+
+from gsplat_traj_optim.splines.bsplines import spline_eval
+from gsplat_traj_optim.optim.initial_guess import linear_interpolation, astar_path_spline_fit 
+from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
+from gsplat_traj_optim.visualisation.vis_utils import EnvAndPathVis
+from gsplat_traj_optim.optim.solvers import create_solver
+
+from scipy.spatial.transform import Rotation as R
+from sklearn.preprocessing import normalize
+
+
+
+class Planner():
+    def __init__(self, obstacle_positions, obstacle_covs, robot_cov, num_control_points, num_samples):  
+
+        self.num_control_points = num_control_points
+        self.num_samples = num_samples
+    
+
+        # casadi function to convert form pose (x y z theta) to 3 positions
+        pose = cas.MX.sym("pose", 4)
+        theta = pose[3]
+        middle = pose[:3]
+        scale = 0.2
+        left = middle - cas.vertcat(cas.cos(theta)* scale, cas.sin(theta) * scale, 0)
+        right = middle + cas.vertcat(cas.cos(theta) *scale, cas.sin(theta) * scale, 0)
+
+        # Create casadi function
+        self.kinematics = cas.Function("kinematics", [pose], [cas.horzcat(left, middle, right)])
+
+        
+        N = obstacle_positions.shape[0]
+        num_samples = 30
+
+        covs_sum = obstacle_covs + robot_cov 
+        covs_det = np.zeros(len(covs_sum))
+        covs_inv = np.zeros_like(covs_sum)
+        for i in range(len(covs_sum)):
+            covs_det[i] = np.linalg.det(covs_sum[i])
+            covs_inv[i] = np.linalg.inv(covs_sum[i])
+
+
+
+        # ============================= VISUALIZATION =============================
+        vis = EnvAndPathVis()
+        #vis.add_gaussians(obstacle_positions, obstacle_covs)
+        vis.add_points(obstacle_positions, color = [0,0,1])
+        # ============================= INITIAL GUESS =============================
+        # a star
+        init_guess = astar_path_spline_fit( start_pos, end_pos, obstacle_positions, num_control_points=num_control_points, voxel_size=1.5) 
+        print(init_guess.shape)
+        spline = spline_eval((init_guess.reshape(4, num_control_points)).T, num_samples)
+        vis.add_curve(spline[:,:3], color = [0,1,0])
+        vis.show()
+
+        # ============================= OPTIMIZATION =============================
+
+        self.solver, self.lbg, self.ubg, self.convolution_functor = create_solver(num_control_points, obstacle_positions, covs_det, covs_inv, self.kinematics, dim_control_points=3, num_samples=num_samples)
+
+        vis.show()
+
+
+
+    def plan(self,start_pos, end_pos):
+ 
+        # ============================= VISUALIZATION =============================
+        vis = EnvAndPathVis()
+        vis.add_points(self.obstacle_positions, color = [0,0,1])
+        # ============================= INITIAL GUESS =============================
+        # a star
+        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=1.5) 
+        print(init_guess.shape)
+        spline = spline_eval((init_guess.reshape(4, self.num_control_points)).T, self.num_samples)
+        vis.add_curve(spline[:,:3], color = [0,1,0])
+        vis.show()
+
+        res = self.solver(x0 = init_guess, lbg = self.lbg, ubg = self.ubg, p = np.concatenate((start_pos, end_pos)))
+        self.control_points_opt = np.array(res['x']).reshape(4, self.num_control_points).T
+        opt_curve = spline_eval(self.control_points_opt, self.num_control_points)
+
+        vis.add_gaussian_path(opt_curve, self.robot_cov ,self.kinematics,color = [1,0,0])
+
+    def regularize(self,max_vel):
+        pass   
+
+    def evaluate_x(t):
+        pass
+
+    def evaluate_dx(t):
+        pass
+
+ 
