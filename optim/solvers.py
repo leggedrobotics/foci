@@ -63,7 +63,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
 
     for i in range(curve.shape[0]):
         cons = cas.vertcat(cons, curve[i,2])
-        lbg = np.concatenate((lbg, [0.9]))
+        lbg = np.concatenate((lbg, [0]))
         ubg = np.concatenate((ubg, [1.1]))
 
     # define optimization objective

@@ -40,3 +40,14 @@ def spline_eval(control_points, num_samples, derivate = 0):
     return curve
 
 
+def spline_eval_at_s(control_points, s, derivate = 0):
+    n_knots = control_points.shape[0] - 4
+
+    ts = np.array([s])
+    basis = basis_function_mat(ts, control_points.shape[0], n_knots, derivate = derivate)
+    curve = basis @ control_points
+    
+    point = curve[0]
+
+    return point
+
