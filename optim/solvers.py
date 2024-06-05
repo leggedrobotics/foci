@@ -43,6 +43,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     
     # define helpful mappings
     curve = spline_eval(control_points, num_samples)
+    dcurve = spline_eval(control_points, num_samples, derivate = 1)
     ddcurve = spline_eval(control_points, num_samples, derivate =2)
 
 
@@ -56,8 +57,19 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     cons = cas.vertcat(cons, (curve[0,0] - start_pos[0]) ** 2 + (curve[0,1] - start_pos[1]) ** 2 + (curve[0,2] - start_pos[2]) ** 2 + (curve[0,3] - start_pos[3]) ** 2)
     lbg = np.concatenate((lbg, [0]))
     ubg = np.concatenate((ubg, [0.05]))
+
+    # constraint start velocity to zero
+    cons = cas.vertcat(cons, (dcurve[0,0] **2 + dcurve[0,1] **2 + dcurve[0,2] **2 + dcurve[0,3] **2))
+    lbg = np.concatenate((lbg, [0]))
+    ubg = np.concatenate((ubg, [0.05]))
+    
     
     cons = cas.vertcat(cons, (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2 + (curve[-1,3] - end_pos[3]) ** 2)
+    lbg = np.concatenate((lbg, [0]))
+    ubg = np.concatenate((ubg, [0.05]))
+
+    # constraint end velocity to zero
+    cons = cas.vertcat(cons, (dcurve[-1,0] **2 + dcurve[-1,1] **2 + dcurve[-1,2] **2 + dcurve[-1,3] **2))
     lbg = np.concatenate((lbg, [0]))
     ubg = np.concatenate((ubg, [0.05]))
 
@@ -79,7 +91,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [1]))
+    ubg = np.concatenate((ubg, [0.1]))
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}

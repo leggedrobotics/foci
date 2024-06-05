@@ -31,7 +31,7 @@ class Planner():
         pose = cas.MX.sym("pose", 4)
         theta = pose[3]
         middle = pose[:3]
-        scale = 0.2
+        scale = 0.5
         left = middle - cas.vertcat(cas.cos(theta)* scale, cas.sin(theta) * scale, 0)
         right = middle + cas.vertcat(cas.cos(theta) *scale, cas.sin(theta) * scale, 0)
 
@@ -78,7 +78,8 @@ class Planner():
         return opt_curve
 
     def regularize(self,max_vel):
-        vel_curve = spline_eval(self.control_points_opt, self.num_samples *3, derivate = 1) 
+        vel_curve = spline_eval(self.control_points_opt, self.num_samples *30, derivate = 1) 
+        rospy.loginfo(vel_curve.shape)
         max_ds = np.max(np.linalg.norm(vel_curve, axis = 1))
         self.a = max_vel / max_ds
         rospy.loginfo("Regularization factor: %f", self.a)
@@ -90,7 +91,7 @@ class Planner():
 
     def evaluate_dx(self,t):
         s = self.a * t
-        return spline_eval_at_s(self.control_points_opt, s, derivate =1)
+        return self.a * spline_eval_at_s(self.control_points_opt, s, derivate =1)
 
     def max_time(self):
         return (1/self.a) * (self.num_control_points-4)
