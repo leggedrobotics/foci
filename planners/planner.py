@@ -56,9 +56,8 @@ class Planner():
 
 
     def plan(self,start_pos, end_pos):
- 
         rospy.loginfo("Computing initial guess")
-        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=1.5) 
+        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=0.5) 
         rospy.loginfo("Initial guess computed")
         spline = spline_eval((init_guess.reshape(4, self.num_control_points)).T, self.num_samples)
 
