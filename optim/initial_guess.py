@@ -67,6 +67,9 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
     min_z = min(means[:,2].min(), start_point[2], end_point[2])
     max_z = max(means[:,2].max(), start_point[2], end_point[2])
 
+    start_point = start_point[:3]
+    end_point = end_point[:3]
+
     spread_x = max_x - min_x
     spread_y = max_y - min_y
     spread_z = max_z - min_z
@@ -120,7 +123,7 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
 
 
     ipop_options = {"ipopt.print_level": 0,
-                     "ipopt.max_iter": 100, 
+                     "ipopt.max_iter": 200, 
                      "ipopt.tol": 1e-3, 
                      "print_time": 0, 
                      "ipopt.acceptable_tol": 1e-3, 
@@ -138,7 +141,9 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
 
     control_points_opt = np.array(sol['x']).reshape(3,num_control_points).T
     
-    initial_guess_curve = spline_eval(control_points_opt, 200)
+    # a zero row to make it 4D
+    control_points_opt = np.concatenate((control_points_opt, np.zeros((num_control_points,1))), axis = 1).T
     
-    return sol['x'], (path_arr, initial_guess_curve)
+
+    return control_points_opt.flatten()
 
