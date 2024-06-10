@@ -12,7 +12,7 @@ from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
 from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
 
-def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinematics,  dim_control_points=3, dim_rotation = 1,num_samples=30):
+def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinematics,  dim_control_points=3, dim_rotation = 1,num_samples=30, num_body_parts = 1):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
@@ -73,25 +73,27 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     # lbg = np.concatenate((lbg, [0]))
     # ubg = np.concatenate((ubg, [0.05]))
 
-    for i in range(curve.shape[0]):
-        cons = cas.vertcat(cons, curve[i,2])
-        lbg = np.concatenate((lbg, [0]))
-        ubg = np.concatenate((ubg, [2.1]))
+    # for i in range(curve.shape[0]):
+    #     cons = cas.vertcat(cons, curve[i,2])
+    #     lbg = np.concatenate((lbg, [0]))
+    #     ubg = np.concatenate((ubg, [2.1]))
 
     # define optimization objective
-    accel_cost = cas.sum1(cas.sum2(ddcurve[:,:2]**2))  + 0.01 * cas.sum1(cas.sum2(ddcurve[:,3] ** 2))# TODO: handle rotation seperately
+    accel_cost = cas.sum1(cas.sum2(ddcurve[:,:2]**2))  + 0.1 * cas.sum1(cas.sum2(ddcurve[:,3] ** 2))# TODO: handle rotation seperately
 
+    length_cost = 0
+    for i in range(num_samples - 1):
+        length_cost += cas.sqrt((curve[i+1,0] - curve[i,0])**2 + (curve[i+1,1] - curve[i,1])**2 + (curve[i+1,2] - curve[i,2])**2)
 
     collision_points = kinematics_functor(curve.T).T
 
-    convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points -1,num_samples*3, obstacle_means, covs_det, covs_inv)
+    convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points -1,num_samples*num_body_parts, obstacle_means, covs_det, covs_inv)
     obstacle_cost = convolution_functor(collision_points)
 
-    cost = accel_cost #+ cas.sum1(curve[:,3]**2) 
-
+    cost = accel_cost  + length_cost
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [10]))
+    ubg = np.concatenate((ubg, [0.01]))
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
