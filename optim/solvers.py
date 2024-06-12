@@ -12,7 +12,7 @@ from gsplat_traj_optim.splines.bsplines import  spline_eval
 from gsplat_traj_optim.convolution.gaussian_robot import create_curve_robot_obstacle_convolution_functor
 from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
 
-def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinematics,  dim_control_points=3, dim_rotation = 1,num_samples=30, num_body_parts = 1):
+def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinematics,  dim_control_points=3, dim_rotation = 1,num_samples=30, num_body_parts = 1, x_range = None, y_range = None, z_range = None):
     """ Return casadi solver object and upper and lower bounds for the optimization problem
     @args:
         num_control_points: int
@@ -73,10 +73,25 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     # lbg = np.concatenate((lbg, [0]))
     # ubg = np.concatenate((ubg, [0.05]))
 
-    # for i in range(curve.shape[0]):
-    #     cons = cas.vertcat(cons, curve[i,2])
-    #     lbg = np.concatenate((lbg, [0]))
-    #     ubg = np.concatenate((ubg, [2.1]))
+    if x_range is not None:
+        for i in range(curve.shape[0]):
+            cons = cas.vertcat(cons, curve[i,0])
+            lbg = np.concatenate((lbg, [x_range[0]]))
+            ubg = np.concatenate((ubg, [x_range[1]]))
+    
+    if y_range is not None:
+        for i in range(curve.shape[0]):
+            cons = cas.vertcat(cons, curve[i,1])
+            lbg = np.concatenate((lbg, [y_range[0]]))
+            ubg = np.concatenate((ubg, [y_range[1]]))
+                                 
+
+
+    if z_range is not None:
+        for i in range(curve.shape[0]):
+            cons = cas.vertcat(cons, curve[i,2])
+            lbg = np.concatenate((lbg, [z_range[0]]))
+            ubg = np.concatenate((ubg, [z_range[1]]))
 
     # define optimization objective
     accel_cost = cas.sum1(cas.sum2(ddcurve[:,:2]**2))  + 0.1 * cas.sum1(cas.sum2(ddcurve[:,3] ** 2))# TODO: handle rotation seperately
@@ -90,10 +105,10 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points -1,num_samples*num_body_parts, obstacle_means, covs_det, covs_inv)
     obstacle_cost = convolution_functor(collision_points)
 
-    cost = accel_cost  + length_cost
+    cost = accel_cost  + length_cost 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [0.01]))
+    ubg = np.concatenate((ubg, [2]))
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
@@ -102,8 +117,8 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
                     "ipopt.tol": 1e-1, 
                     "print_time": 0, 
                     "ipopt.acceptable_tol": 1e-1, 
-                    "ipopt.acceptable_obj_change_tol": 1e-2,
-                    "ipopt.constr_viol_tol": 1e-2,
+                    "ipopt.acceptable_obj_change_tol": 1e-1,
+                    "ipopt.constr_viol_tol": 1e-1,
                     "ipopt.acceptable_iter": 1,
                     "ipopt.linear_solver": "ma27",
                     "ipopt.hessian_approximation": "limited-memory",
