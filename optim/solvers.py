@@ -105,10 +105,10 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points -1,num_samples*num_body_parts, obstacle_means, covs_det, covs_inv)
     obstacle_cost = convolution_functor(collision_points)
 
-    cost = accel_cost  + length_cost 
+    cost = accel_cost  + 0.01* length_cost 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [1]))
+    ubg = np.concatenate((ubg, [0.1]))
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
