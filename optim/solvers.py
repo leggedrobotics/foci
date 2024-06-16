@@ -32,6 +32,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     # define optimization parameters
     start_pos = SYM_TYPE.sym("start_pos", dim_control_points, 1)
     end_pos = SYM_TYPE.sym("end_pos", dim_control_points, 1)
+    max_length = SYM_TYPE.sym("max_length", 1, 1)
     params = cas.vertcat(cas.vec(start_pos),
                     cas.vec(end_pos),
     )
@@ -127,16 +128,14 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     #     ubg = np.concatenate((ubg, [1000]))
 
 
-        
-
-
-
-
 
     cost =  obstacle_cost
-    # cons = cas.vertcat(cons, obstacle_cost)
-    # lbg = np.concatenate((lbg, [0]))
-    # ubg = np.concatenate((ubg, [1]))
+
+    cons = cas.vertcat(cons, length_cost)
+    lbg = np.concatenate((lbg, [0]))
+    ubg = np.concatenate((ubg, [1000]))
+
+    print(ubg)
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
