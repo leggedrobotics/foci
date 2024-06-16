@@ -104,26 +104,32 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     convolution_functor = ConvolutionFunctorWarp("conv",dim_control_points -1,num_body_parts * num_samples, obstacle_means, covs_det, covs_inv)
     obstacle_cost = convolution_functor(collision_points)
     # for i in range(num_samples):
-    #     accel_linear = cas.sum2(ddcurve[i,:2]**2)
+    #     vel_linear = cas.sum2(dcurve[i,:2]**2)
+    #     vel_rot = dcurve[i,3] ** 2
+
+    #     cons = cas.vertcat(cons, vel_linear)
+    #     lbg = np.concatenate((lbg, [0]))
+    #     ubg = np.concatenate((ubg, [100]))
+
+    #     cons = cas.vertcat(cons, vel_rot)
+    #     lbg = np.concatenate((lbg, [0]))
+    #     ubg = np.concatenate((ubg, [100]))
+
+    #     accel_linear = cas.sum2(ddcurve[i,:2]**2)   
     #     accel_rot = ddcurve[i,3] ** 2
 
-    #     # cons = cas.vertcat(cons, accel_linear)
-    #     # lbg = np.concatenate((lbg, [0]))
-    #     # ubg = np.concatenate((ubg, [1000]))
+    #     cons = cas.vertcat(cons, accel_linear)
+    #     lbg = np.concatenate((lbg, [0]))
+    #     ubg = np.concatenate((ubg, [1000]))
 
-    #     # cons = cas.vertcat(cons, accel_rot)
-    #     # lbg = np.concatenate((lbg, [0]))
-    #     # ubg = np.concatenate((ubg, [1000]))
-
-
-    #     # cons = cas.vertcat(cons, obstacle_cost_sample)  
-    #     # lbg = np.concatenate((lbg, [0]))
-    #     # ubg = np.concatenate((ubg, [0.7]))
+    #     cons = cas.vertcat(cons, accel_rot)
+    #     lbg = np.concatenate((lbg, [0]))
+    #     ubg = np.concatenate((ubg, [1000]))
 
 
+        
 
-    #     obstacle_cost_sample = convolution_functor(collision_points[i:i +3,:])
-    #     obstacle_cost += obstacle_cost_sample
+
 
 
 
@@ -138,10 +144,10 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
                     "ipopt.max_iter":100, 
                     "ipopt.tol": 1e-1, 
                     "print_time": 0, 
-                    "ipopt.acceptable_tol": 1e-1, 
-                    "ipopt.acceptable_obj_change_tol": 1e-1,
-                    "ipopt.constr_viol_tol": 1e-1,
-                    "ipopt.acceptable_iter": 1,
+                    "ipopt.acceptable_tol": 1e-3, 
+                    "ipopt.acceptable_obj_change_tol": 1e-3,
+                    "ipopt.constr_viol_tol": 1e-3,
+                    "ipopt.acceptable_iter": 10,
                     "ipopt.linear_solver": "ma27",
                     "ipopt.hessian_approximation": "limited-memory",
                     }
