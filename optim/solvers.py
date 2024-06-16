@@ -108,7 +108,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
     cost = accel_cost  + length_cost 
     cons = cas.vertcat(cons, obstacle_cost)
     lbg = np.concatenate((lbg, [0]))
-    ubg = np.concatenate((ubg, [2]))
+    ubg = np.concatenate((ubg, [1]))
     
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
