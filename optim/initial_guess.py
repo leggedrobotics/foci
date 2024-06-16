@@ -59,7 +59,7 @@ class BasicAStar(AStar):
     
 
 
-def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_control_points=20):
+def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_control_points=20, z_range = None):
     min_x = min(means[:,0].min(), start_point[0], end_point[0])
     max_x = max(means[:,0].max(), start_point[0], end_point[0])
     min_y = min(means[:,1].min(), start_point[1], end_point[1])
@@ -75,6 +75,8 @@ def astar_path_spline_fit(start_point, end_point, means, voxel_size = 1.0, num_c
     spread_z = max_z - min_z
 
     bounds = [[min_x - 0.2 * spread_x, max_x + 0.2 * spread_x], [min_y - 0.2 * spread_y, max_y + 0.2 * spread_y], [min_z - 0.2 * spread_z, max_z + 0.2 * spread_z]]
+    if z_range is not None:
+        bounds[2] = [z_range[0], z_range[1]] 
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(means)
