@@ -30,7 +30,7 @@ class EnvAndPathVis():
         """
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points)
-        pcd.paint_uniform_color(color)
+        # pcd.paint_uniform_color(color)
         self.components.append(pcd)
 
     def add_curve(self, points, color = [1,0,0]):
