@@ -129,7 +129,7 @@ def create_solver(num_control_points, obstacle_means, covs_det, covs_inv, kinema
 
 
 
-    cost =  obstacle_cost +  0.0001 * accel_cost 
+    cost =  obstacle_cost +  0.01 * accel_cost 
 
     cons = cas.vertcat(cons, length_cost)
     lbg = np.concatenate((lbg, [0]))

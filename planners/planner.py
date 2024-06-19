@@ -59,6 +59,12 @@ class Planner():
         rospy.loginfo("Initial guess computed")
         spline = spline_eval((init_guess.reshape(4, self.num_control_points)).T, self.num_samples)
 
+        astar_length = 0
+        for i in range(1, self.num_samples):
+            astar_length += np.linalg.norm(spline[i,:3] - spline[i-1,:3])
+        
+        self.ubg[-1] = astar_length * 1.0
+
     
         rospy.loginfo("Optimizing")
         res = self.solver(x0 = init_guess, lbg = self.lbg, ubg = self.ubg, p = np.concatenate((start_pos, end_pos)))
