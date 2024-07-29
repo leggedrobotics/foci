@@ -56,9 +56,8 @@ def create_solver(num_control_points,
 
     start_position = start_pos[:3]
     end_position = end_pos[:3]
-    T = ((end_position[0] - start_position[0]) ** 2 
-                 + (end_position[1] - start_position[1]) ** 2 
-                 + (end_position[2] - start_position[2])) /(vmax **2) # estimate of time to reach goal
+    T = cas.norm_2(end_pos - start_pos)/vmax # estimate of time to reach goal
+
     S = num_control_points - 4  # number of knots, spline is parametrized on interval [0, S]
     m_t_to_s = S/T # scaling factor to convert time to spline parameter
 
@@ -69,14 +68,14 @@ def create_solver(num_control_points,
 
 
     # Weighing factor for cost
-    w_0 = 1 # jerk cost
+    w_0 = 0.1 # jerk cost
     w_1 = 10 # obstacle cost
     w_2 = 1 # goal cost
     
     # define helpful mappings
     curve = spline_eval(control_points, num_samples)
     dcurve = m_t_to_s * spline_eval(control_points, num_samples, derivate = 1)
-    ddcurve = (m_t_to_s **2)  *spline_eval(control_points, num_samples, derivate =2) 
+    ddcurve = (m_t_to_s **2)  * spline_eval(control_points, num_samples, derivate =2) 
     dddcurve = (m_t_to_s **3) * spline_eval(control_points, num_samples, derivate =3) 
 
     kinematics_functor = kinematics.map(num_samples, "openmp") 
@@ -116,7 +115,7 @@ def create_solver(num_control_points,
     for i in range(curve.shape[0]):
         cons = cas.vertcat(cons, dcurve[i,0] ** 2 + dcurve[i,1] ** 2 + dcurve[i,2] ** 2)
         lbg = np.concatenate((lbg, [0]))
-        ubg = np.concatenate((ubg, [0.001 * vmax ** 2]))
+        ubg = np.concatenate((ubg, [vmax ** 2]))
     
     # acceleration constraints =============================
     for i in range(curve.shape[0]):
@@ -133,21 +132,20 @@ def create_solver(num_control_points,
 
     jerk_cost = cas.sum1(cas.sum2(dddcurve **2))
 
-    goal_cost = (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2 + (curve[-1,3] - end_pos[3]) ** 2
-
+    goal_cost = (curve[-1,0] - end_pos[0]) ** 2 + (curve[-1,1] - end_pos[1]) ** 2 + (curve[-1,2] - end_pos[2]) ** 2 
 
     cost =  w_0 *jerk_cost + w_1 * obstacle_cost + w_2 * goal_cost
 
     # define optimization solver
     nlp = {"x": dec_vars, "f": cost, "p": params, "g": cons}
     ipopt_options = {"ipopt.print_level": 5,
-                    "ipopt.max_iter":100, 
+                    "ipopt.max_iter":200, 
                     "ipopt.tol": 1e-1, 
                     "print_time": 0, 
                     "ipopt.acceptable_tol": 1e-3, 
-                    "ipopt.acceptable_obj_change_tol": 1e-3,
+                    "ipopt.acceptable_obj_change_tol": 1e-1,
                     "ipopt.constr_viol_tol": 1e-3,
-                    "ipopt.acceptable_iter": 10,
+                    "ipopt.acceptable_iter": 3,
                     "ipopt.linear_solver": "ma27",
                     "ipopt.hessian_approximation": "limited-memory",
                     }
