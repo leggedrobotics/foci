@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level =logging.INFO)
 
 def basis_function(t, derivate = 0):
-    assert derivate in [0,1,2], "derivate must be 0, 1 or 2"
+    assert derivate in [0,1,2,3], "derivate must be 0, 1, 2, or 3"
 
     if derivate == 0:
       t_ = np.array([1, t, t**2, t**3])
@@ -14,6 +14,8 @@ def basis_function(t, derivate = 0):
        t_ = np.array([0, 1, 2*t, 3*t**2])
     if derivate == 2:
        t_ = np.array(([0,0, 2, 6* t]))
+    if derivate == 3:
+       t_ = np.array(([0,0,0, 6])) 
     
     feature_matrix = 1/6* np.array([[1, 4, 1, 0],
                                [-3,0 ,3,0],
