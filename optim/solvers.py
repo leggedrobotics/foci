@@ -8,7 +8,7 @@ import pandas as pd
 
 logging.basicConfig(level =logging.INFO)
 
-from gsplat_traj_optim.splines.bsplines import  spline_eval
+from gsplat_traj_optim.splines.bsplines import  spline_eval, get_minvo_hulls
 from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
 
 def create_solver(num_control_points,
@@ -78,6 +78,12 @@ def create_solver(num_control_points,
     ddcurve = (m_t_to_s **2)  * spline_eval(control_points, num_samples, derivate =2) 
     dddcurve = (m_t_to_s **3) * spline_eval(control_points, num_samples, derivate =3) 
 
+    pos_hulls = get_minvo_hulls(control_points, derivative = 0)
+    vel_hulls = [m_t_to_s * hull for hull in get_minvo_hulls(control_points, derivative = 1)]
+    acc_hulls = [(m_t_to_s **2) * hull for hull in get_minvo_hulls(control_points, derivative = 2)]
+    jerk_hulls = [(m_t_to_s **3) * hull for hull in get_minvo_hulls(control_points, derivative = 3)]
+
+
     kinematics_functor = kinematics.map(num_samples, "openmp") 
 
     # define optimization constraints
@@ -92,41 +98,76 @@ def create_solver(num_control_points,
     ubg = np.concatenate((ubg, [0.05]))
 
     # Position constraints =================================
-    if x_range is not None:
-        for i in range(curve.shape[0]):
-            cons = cas.vertcat(cons, curve[i,0])
-            lbg = np.concatenate((lbg, [x_range[0]]))
-            ubg = np.concatenate((ubg, [x_range[1]]))
+    # if x_range is not None:
+    #     for i in range(curve.shape[0]):
+    #         cons = cas.vertcat(cons, curve[i,0])
+    #         lbg = np.concatenate((lbg, [x_range[0]]))
+    #         ubg = np.concatenate((ubg, [x_range[1]]))
     
+    # if y_range is not None:
+    #     for i in range(curve.shape[0]):
+    #         cons = cas.vertcat(cons, curve[i,1])
+    #         lbg = np.concatenate((lbg, [y_range[0]]))
+    #         ubg = np.concatenate((ubg, [y_range[1]]))
+
+    # if z_range is not None:
+    #     for i in range(curve.shape[0]):
+    #         cons = cas.vertcat(cons, curve[i,2])
+    #         lbg = np.concatenate((lbg, [z_range[0]]))
+    #         ubg = np.concatenate((ubg, [z_range[1]]))
+    
+    if x_range is not None:
+        for hull in pos_hulls:
+            for i in range(hull.shape[0]):
+                cons = cas.vertcat(cons, hull[i,0])
+                lbg = np.concatenate((lbg, [x_range[0]]))
+                ubg = np.concatenate((ubg, [x_range[1]]))
+
     if y_range is not None:
-        for i in range(curve.shape[0]):
-            cons = cas.vertcat(cons, curve[i,1])
-            lbg = np.concatenate((lbg, [y_range[0]]))
-            ubg = np.concatenate((ubg, [y_range[1]]))
-
+        for hull in pos_hulls:
+            for i in range(hull.shape[0]):
+                cons = cas.vertcat(cons, hull[i,1])
+                lbg = np.concatenate((lbg, [y_range[0]]))
+                ubg = np.concatenate((ubg, [y_range[1]]))
+    
     if z_range is not None:
-        for i in range(curve.shape[0]):
-            cons = cas.vertcat(cons, curve[i,2])
-            lbg = np.concatenate((lbg, [z_range[0]]))
-            ubg = np.concatenate((ubg, [z_range[1]]))
+        for hull in pos_hulls:
+            for i in range(hull.shape[0]):
+                cons = cas.vertcat(cons, hull[i,2])
+                lbg = np.concatenate((lbg, [z_range[0]]))
+                ubg = np.concatenate((ubg, [z_range[1]]))
 
-
+            
     # velocity constraints =================================
-    for i in range(curve.shape[0]):
-        cons = cas.vertcat(cons, dcurve[i,0] ** 2 + dcurve[i,1] ** 2 + dcurve[i,2] ** 2)
-        lbg = np.concatenate((lbg, [0]))
-        if i == curve.shape[0] - 1:
-            ubg = np.concatenate((ubg, [0]))
-        else:
+    # for i in range(curve.shape[0]):
+    #     cons = cas.vertcat(cons, dcurve[i,0] ** 2 + dcurve[i,1] ** 2 + dcurve[i,2] ** 2)
+    #     lbg = np.concatenate((lbg, [0]))
+    #     if i == curve.shape[0] - 1:
+    #         ubg = np.concatenate((ubg, [0]))
+    #     else:
+    #         ubg = np.concatenate((ubg, [vmax ** 2]))
+
+    for hull in vel_hulls:
+        for i in range(hull.shape[0]):
+            cons = cas.vertcat(cons, hull[i,0] ** 2 + hull[i,1] ** 2 + hull[i,2] ** 2)
+            lbg = np.concatenate((lbg, [0]))
             ubg = np.concatenate((ubg, [vmax ** 2]))
+
+    
     
     # acceleration constraints =============================
-    for i in range(curve.shape[0]):
-        cons = cas.vertcat(cons, ddcurve[i,0] ** 2 + ddcurve[i,1] ** 2 + ddcurve[i,2] ** 2)
-        lbg = np.concatenate((lbg, [0]))
-        if i == curve.shape[0] - 1:
-            ubg = np.concatenate((ubg, [0]))
-        else:
+    # for i in range(curve.shape[0]):
+    #     cons = cas.vertcat(cons, ddcurve[i,0] ** 2 + ddcurve[i,1] ** 2 + ddcurve[i,2] ** 2)
+    #     lbg = np.concatenate((lbg, [0]))
+    #     if i == curve.shape[0] - 1:
+    #         ubg = np.concatenate((ubg, [0]))
+    #     else:
+    #         ubg = np.concatenate((ubg, [amax ** 2]))
+
+    for hull in acc_hulls:
+        for i in range(hull.shape[0]):
+            cons = cas.vertcat(cons, hull[i,0] ** 2 + hull[i,1] ** 2 + hull[i,2] ** 2)
+            lbg = np.concatenate((lbg, [0]))
             ubg = np.concatenate((ubg, [amax ** 2]))
 
 
