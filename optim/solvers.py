@@ -69,7 +69,7 @@ def create_solver(num_control_points,
 
     # Weighing factor for cost
     w_0 = 0.1 # jerk cost
-    w_1 = 10 # obstacle cost
+    w_1 = 40 # obstacle cost
     w_2 = 1 # goal cost
     
     # define helpful mappings
@@ -115,13 +115,19 @@ def create_solver(num_control_points,
     for i in range(curve.shape[0]):
         cons = cas.vertcat(cons, dcurve[i,0] ** 2 + dcurve[i,1] ** 2 + dcurve[i,2] ** 2)
         lbg = np.concatenate((lbg, [0]))
-        ubg = np.concatenate((ubg, [vmax ** 2]))
+        if i == curve.shape[0] - 1:
+            ubg = np.concatenate((ubg, [0]))
+        else:
+            ubg = np.concatenate((ubg, [vmax ** 2]))
     
     # acceleration constraints =============================
     for i in range(curve.shape[0]):
         cons = cas.vertcat(cons, ddcurve[i,0] ** 2 + ddcurve[i,1] ** 2 + ddcurve[i,2] ** 2)
         lbg = np.concatenate((lbg, [0]))
-        ubg = np.concatenate((ubg, [amax ** 2]))
+        if i == curve.shape[0] - 1:
+            ubg = np.concatenate((ubg, [0]))
+        else:
+            ubg = np.concatenate((ubg, [amax ** 2]))
 
 
     collision_points = kinematics_functor(curve.T).T
