@@ -39,8 +39,6 @@ class Planner():
         self.kinematics = cas.Function("kinematics", [pose], [cas.horzcat(left, middle, right)])
 
         
-        N = obstacle_positions.shape[0]
-        num_samples = 30
 
         covs_sum = obstacle_covs + robot_cov 
         covs_det = np.zeros(len(covs_sum))
@@ -50,16 +48,22 @@ class Planner():
             covs_inv[i] = np.linalg.inv(covs_sum[i])
 
 
-        self.solver, self.lbg, self.ubg, self.convolution_functor = create_solver(num_control_points, obstacle_positions, covs_det, covs_inv, self.kinematics, dim_control_points=3, num_samples=num_samples)
+        self.solver, self.lbg, self.ubg, self.convolution_functor = create_solver(num_control_points, obstacle_positions, covs_det, covs_inv, self.kinematics, dim_control_points=3,num_body_parts=3, num_samples=num_samples, z_range=(0,2))
 
 
 
 
     def plan(self,start_pos, end_pos):
         rospy.loginfo("Computing initial guess")
-        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=0.5) 
+        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=1) 
         rospy.loginfo("Initial guess computed")
         spline = spline_eval((init_guess.reshape(4, self.num_control_points)).T, self.num_samples)
+
+        astar_length = 0
+        for i in range(1, self.num_samples):
+            astar_length += np.linalg.norm(spline[i,:3] - spline[i-1,:3])
+        
+        self.ubg[-1] = astar_length * 1.0
 
     
         rospy.loginfo("Optimizing")
