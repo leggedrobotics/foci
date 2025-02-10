@@ -7,7 +7,7 @@ import casadi as cas
 from gsplat_traj_optim.splines.bsplines import spline_eval, spline_eval_at_s
 from gsplat_traj_optim.optim.initial_guess import linear_interpolation, astar_path_spline_fit 
 from gsplat_traj_optim.convolution.gaussian_robot_warp import ConvolutionFunctorWarp
-from gsplat_traj_optim.visualisation.vis_utils import EnvAndPathVis
+from gsplat_traj_optim.visualisation.vis_utils import ViserVis
 from gsplat_traj_optim.optim.solvers import create_solver
 
 from scipy.spatial.transform import Rotation as R
@@ -18,13 +18,14 @@ import rospy
 
 
 class Planner():
-    def __init__(self, obstacle_positions, obstacle_covs, robot_cov, num_control_points, num_samples):  
+    def __init__(self, obstacle_positions, obstacle_covs, robot_cov, num_control_points, num_samples, obstacle_colors = None):  
 
         self.num_control_points = num_control_points
         self.num_samples = num_samples
         self.obstacle_positions = obstacle_positions
         self.obstacle_covs = obstacle_covs
         self.robot_cov = robot_cov
+        self.obstacle_colors = obstacle_colors
     
 
         # casadi function to convert form pose (x y z theta) to 3 positions
@@ -72,11 +73,26 @@ class Planner():
         opt_curve = spline_eval(self.control_points_opt, self.num_samples)
         rospy.loginfo("Optimization done")
 
-        vis = EnvAndPathVis()
+        vis = ViserVis()
         vis.add_points(self.obstacle_positions, color = [0,0,1])    
+        vis.add_gaussians(self.obstacle_positions, self.obstacle_covs, self.obstacle_colors)
         vis.add_curve(spline[:,:3], color = [1,0,0])
         vis.add_gaussian_path(opt_curve, self.robot_cov ,self.kinematics,color = [0,1,0])
-        vis.show()
+        if vis.show() == 0:
+            rospy.loginfo("Visualization rejected, quitting")
+            exit(0)
+
+        # # export data for vis testing
+        # os.makedirs("test_data", exist_ok=True)
+
+        # np.save("test_data/obstacle_positions.npy", self.obstacle_positions)
+        # np.save("test_data/obstacle_covs.npy", self.obstacle_covs)
+        # np.save("test_data/spline.npy", spline[:,:3])
+        # np.save("test_data/opt_curve.npy", opt_curve)
+        # np.save("test_data/robot_cov.npy", self.robot_cov)
+        # np.save("test_data/kinematics.npy", self.kinematics)
+        # np.save("test_data/means.npy", opt_curve)
+        # np.save("test_data/covs.npy", self.robot_cov)
 
         return opt_curve
 
