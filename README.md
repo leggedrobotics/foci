@@ -25,10 +25,10 @@ FOCI is a novel method to compute orientation aware trajectories for robots usin
 
 ## Installation
 1. Obtain an HSL Licence for a linear solver (`ma27`/ `ma57`), download the corresponding files, rename the extracted folder to `coinhsl` and move it to the root directory in this repository. These are require
-2. `docker build .` to build the provided docker container.
-3. `` to attach to the container.
-4. `` to run the demo script. You should see a visualisation similar to the one in this `README.md`
-
+2. `docker build -t rsl/foci .` to build the provided docker container.
+3. `docker run -it -v .:/workspace --gpus all -p 127.0.0.1:8080:8080 rsl/foci` to run and attach to the container.
+4. `pip install -e .` to install the `foci` in the docker container.
+5. `python3 demos/stonehenge.py` to run the demo script. Open `127.0.0.1:8080` in your webbrowser to a see a visualisation similar to the one in this `README.md`
 
 ## Citing
 If you find this work useful, please consider citing our paper:
