@@ -29,15 +29,15 @@ radius = max(np.linalg.norm(means, axis=1)) * 1.02
 
 robot_cov = np.eye(3) * 0.01
 
-planner = Planner(means, covs, robot_cov, num_control_points=10, num_samples=50) 
+planner = Planner(means, covs, robot_cov, num_control_points=10, num_samples=40) 
 
 
 
 
 points = []
 # add points at 1.2 * radius around the origin using cos and sin
-for i in range(10):
-    theta = i * 2 * np.pi / 10
+for i in range(12):
+    theta = i * 2 * np.pi / 12
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
     points.append([x, y, 0.5,np.pi/2])
@@ -45,18 +45,23 @@ for i in range(10):
 
 #pick random start and end points from points array
 
-start_point = points[3]
-end_point = points[8]
-opt_curve, spline  = planner.plan(start_point, end_point)
+solutions = []
+for i in range(6):
+    start_point = points[i]
+    end_point = points[i+6]
+    opt_curve, astar = planner.plan(start_point, end_point)
+    solutions.append((opt_curve, astar))    
 
-print(opt_curve)
-print(spline)
 
 
 # ============================== Visualize data ==============================
 vis =ViserVis()
 vis.add_gaussians(means, covs, color = colors,  opacity=opacities)
 vis.add_points(np.array(points)[:,:3], color = [1,0,0])
-vis.add_curve(spline[:,:3], color = [0,1,0])
-vis.add_gaussian_path(opt_curve, robot_cov, planner.kinematics, color = [0,1,0])
+for i, (opt_curve, astar) in enumerate(solutions):
+    # add spline and opt_curve to vis
+    print("hello")
+    vis.add_curve(astar[:,:3], color = [0,1,0], name = f"astar_{i}")
+    vis.add_gaussian_path(opt_curve, robot_cov, planner.kinematics, color = [0,1,0], name = f"opt_curve_{i}")
+
 vis.show()

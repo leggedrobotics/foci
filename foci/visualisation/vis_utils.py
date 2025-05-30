@@ -84,11 +84,11 @@ class ViserVis(BaseVis):
     def add_points(self, points, color = [0,0,1]):
         self.server.scene.add_point_cloud("Points", points, color)
 
-    def add_curve(self, points, color = [1,0,0]):
+    def add_curve(self, points, color = [1,0,0], name = "Curve"):
 
-        self.server.scene.add_spline_catmull_rom("Curve", positions=points, color=color)
+        self.server.scene.add_spline_catmull_rom(name, positions=points, color=color)
 
-    def add_gaussian_path(self, curve, cov, kinematics, color = [0,1,0]):
+    def add_gaussian_path(self, curve, cov, kinematics, color = [0,1,0], name = "Robot Gaussians"):
         kinematics_functor = kinematics.map(curve.shape[0], "openmp")
         means = np.array(kinematics_functor(curve.T).T)
 
@@ -99,7 +99,7 @@ class ViserVis(BaseVis):
 
         covs = np.tile(cov, (len(means), 1, 1))
 
-        self.server.add_gaussian_splats("Robot Gaussians", means, covs, rgb, opacity)
+        self.server.add_gaussian_splats(name, means, covs, rgb, opacity)
 
     def add_gaussians(self, means, covs, color = [0,1,0], opacity = 1.0):
         if  len(color) == 3:

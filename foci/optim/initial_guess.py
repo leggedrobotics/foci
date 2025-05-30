@@ -55,7 +55,7 @@ class BasicAStar(AStar):
         return np.linalg.norm(np.array(current) - np.array(goal))
     
     def is_goal_reached(self, current, goal):
-        return np.linalg.norm(np.array(current) - np.array(goal)) < 1
+        return np.linalg.norm(np.array(current) - np.array(goal)) < 0.5
     
 
 
