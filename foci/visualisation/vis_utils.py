@@ -81,23 +81,8 @@ class ViserVis(BaseVis):
         self.running = True
         self.valid = True
 
-        gui_accept_button = self.server.gui.add_button("Accept", color='green')
-
-
-        @gui_accept_button.on_click
-        def accept_button_clicked(_):
-            self.valid = True
-            self.running = False
-
-        gui_cancel_button = self.server.gui.add_button("Reject", color='red')
-
-        @gui_cancel_button.on_click
-        def cancel_button_clicked(_):
-            self.valid = False
-            self.running = False
-
     def add_points(self, points, color = [0,0,1]):
-        self.server.scene.add_point_cloud("Points", points, self.z_colormap(points))
+        self.server.scene.add_point_cloud("Points", points, color)
 
     def add_curve(self, points, color = [1,0,0]):
 
@@ -117,7 +102,7 @@ class ViserVis(BaseVis):
         self.server.add_gaussian_splats("Robot Gaussians", means, covs, rgb, opacity)
 
     def add_gaussians(self, means, covs, color = [0,1,0], opacity = 1.0):
-        if color == None or len(color) == 3:
+        if  len(color) == 3:
             color = self.z_colormap(means)
         if type(opacity) == float:
             opacity = np.tile(opacity, (len(means), 1))

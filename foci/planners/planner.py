@@ -13,7 +13,6 @@ from foci.optim.solvers import create_solver
 from scipy.spatial.transform import Rotation as R
 from sklearn.preprocessing import normalize
 
-import rospy
 
 
 
@@ -32,14 +31,12 @@ class Planner():
         pose = cas.MX.sym("pose", 4)
         theta = pose[3]
         middle = pose[:3]
-        scale = 0.5
+        scale = 0.2
         left = middle - cas.vertcat(cas.cos(theta)* scale, cas.sin(theta) * scale, 0)
         right = middle + cas.vertcat(cas.cos(theta) *scale, cas.sin(theta) * scale, 0)
 
         # Create casadi function
         self.kinematics = cas.Function("kinematics", [pose], [cas.horzcat(left, middle, right)])
-
-        
 
         covs_sum = obstacle_covs + robot_cov 
         covs_det = np.zeros(len(covs_sum))
@@ -48,16 +45,12 @@ class Planner():
             covs_det[i] = np.linalg.det(covs_sum[i])
             covs_inv[i] = np.linalg.inv(covs_sum[i])
 
-
-        self.solver, self.lbg, self.ubg, self.convolution_functor = create_solver(num_control_points, obstacle_positions, covs_det, covs_inv, self.kinematics, dim_control_points=3,num_body_parts=3, num_samples=num_samples, z_range=(0,2))
-
-
-
+        self.solver, self.lbg, self.ubg, self.convolution_functor = create_solver(num_control_points, obstacle_positions, covs_det, covs_inv, self.kinematics, dim_control_points=3,num_body_parts=3, num_samples=num_samples, z_range=(0,1))
 
     def plan(self,start_pos, end_pos):
-        rospy.loginfo("Computing initial guess")
-        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=1) 
-        rospy.loginfo("Initial guess computed")
+
+        init_guess = astar_path_spline_fit( start_pos, end_pos, self.obstacle_positions, num_control_points=self.num_control_points, voxel_size=0.25, z_range=(0,1)) 
+
         spline = spline_eval((init_guess.reshape(4, self.num_control_points)).T, self.num_samples)
 
         astar_length = 0
@@ -67,20 +60,17 @@ class Planner():
         self.ubg[-1] = astar_length * 1.0
 
     
-        rospy.loginfo("Optimizing")
         res = self.solver(x0 = init_guess, lbg = self.lbg, ubg = self.ubg, p = np.concatenate((start_pos, end_pos)))
         self.control_points_opt = np.array(res['x']).reshape(4, self.num_control_points).T
         opt_curve = spline_eval(self.control_points_opt, self.num_samples)
-        rospy.loginfo("Optimization done")
 
-        vis = ViserVis()
-        vis.add_points(self.obstacle_positions, color = [0,0,1])    
-        vis.add_gaussians(self.obstacle_positions, self.obstacle_covs, self.obstacle_colors)
-        vis.add_curve(spline[:,:3], color = [1,0,0])
-        vis.add_gaussian_path(opt_curve, self.robot_cov ,self.kinematics,color = [0,1,0])
-        if vis.show() == 0:
-            rospy.loginfo("Visualization rejected, quitting")
-            exit(0)
+        # vis = ViserVis()
+        # vis.add_points(self.obstacle_positions, color = [0,0,1])    
+        # vis.add_gaussians(self.obstacle_positions, self.obstacle_covs, self.obstacle_colors)
+        # vis.add_curve(spline[:,:3], color = [1,0,0])
+        # vis.add_gaussian_path(opt_curve, self.robot_cov ,self.kinematics,color = [0,1,0])
+        # if vis.show() == 0:
+        #     exit(0)
 
         # # export data for vis testing
         # os.makedirs("test_data", exist_ok=True)
@@ -94,14 +84,12 @@ class Planner():
         # np.save("test_data/means.npy", opt_curve)
         # np.save("test_data/covs.npy", self.robot_cov)
 
-        return opt_curve
+        return opt_curve, spline
 
     def regularize(self,max_vel):
         vel_curve = spline_eval(self.control_points_opt, self.num_samples *30, derivate = 1) 
-        rospy.loginfo(vel_curve.shape)
         max_ds = np.max(np.linalg.norm(vel_curve, axis = 1))
         self.a = max_vel / max_ds
-        rospy.loginfo("Regularization factor: %f", self.a)
 
     def evaluate_x(self,t):
         s = self.a * t

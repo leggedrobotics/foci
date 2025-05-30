@@ -13,7 +13,7 @@ setup(
         "viser",
         "plyfile",
         "scipy",
-        
+        "astar",
     ],
     python_requires=">=3.7",
     include_package_data=True,
