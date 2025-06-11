@@ -72,30 +72,30 @@ def basis_function(t, derivate = 0):
 
     return t_ @ BSPLINE_3
 
-def basis_function_mat(ts, n_control_points, n_knots, derivate = 0):
+def basis_function_mat(ts, n_control_points, upper_bound, derivate = 0):
     mat = np.zeros((ts.shape[0], n_control_points))
     for i, t in enumerate(ts):
-        offset = max(min(int(np.floor(t)), n_knots -1),0)
+        offset = max(min(int(np.floor(t)), upper_bound -1),0)
         u = t - offset
         mat[i][offset: offset + 4] = basis_function(u, derivate = derivate)
     
     return mat
 
 def spline_eval(control_points, num_samples, derivate = 0):
-    n_knots = control_points.shape[0] - 4
+    upper_bound = control_points.shape[0] - 3
 
-    ts = np.linspace(0, n_knots, num_samples)
-    basis = basis_function_mat(ts, control_points.shape[0], n_knots, derivate = derivate)
+    ts = np.linspace(0, upper_bound, num_samples)
+    basis = basis_function_mat(ts, control_points.shape[0], upper_bound, derivate = derivate)
     curve = basis @ control_points
 
     return curve
 
 
 def spline_eval_at_s(control_points, s, derivate = 0):
-    n_knots = control_points.shape[0] - 4
+    upper_bound = control_points.shape[0] - 4
 
     ts = np.array([s])
-    basis = basis_function_mat(ts, control_points.shape[0], n_knots, derivate = derivate)
+    basis = basis_function_mat(ts, control_points.shape[0], upper_bound, derivate = derivate)
     curve = basis @ control_points
     
     point = curve[0]
@@ -158,147 +158,38 @@ def get_minvo_hulls(control_points, derivative = 0):
 
 
 if __name__ == "__main__":
-    import matplotlib
-    import matplotlib.pyplot as plt
+    from scipy.interpolate import BSpline
+    deg = 3
+    knots = [ -3, -2,  -1,  0,  1, 2,   3,    4,    5,  6,  7, 8, 9, 10];
+    ctrl_pts = [0,1,2,3,4,5,6,7,8,9,10];
+    pos = BSpline(knots, ctrl_pts, deg)
+    vel=pos.derivative(1);
+    accel=pos.derivative(2);
+    jerk=pos.derivative(3);
+    print("Pos= ",pos(0.5))
+    print("Vel= ",vel(0.5))
+    print("Accel= ",accel(0.5))
+    print("Jerk= ",jerk(0.5))
 
-    n_control_points = 10
-    n_knots = n_control_points - 4
+    # Test the spline evaluation
+    control_points = np.array((ctrl_pts)).reshape(-1,1)
 
-    control_points = np.array(
-        [ 
-            [0,0],
-            [1,3],
-            [4,0],
-            [7,-3],
-            [11,0],
-            [15,3],
-            [20,0],
-            [27,-3],
-            [40,0],
-            [50,3] ,
-        ]
-    )
-
-    curve = spline_eval(control_points, 1000)
-    dcurve = spline_eval(control_points, 1000, derivate = 1)
-    ddcurve = spline_eval(control_points, 1000, derivate = 2)
-    dddcurve = spline_eval(control_points, 1000, derivate = 3)
-
-
-    points = []
-    vels = []
-    accs = []
-    for s in np.linspace(0, n_knots, 1000):
-
-        point = spline_eval_at_s(control_points, s)
-        vel = spline_eval_at_s(control_points, s, derivate = 1)
-        acc = spline_eval_at_s(control_points, s, derivate = 2)
-
-        points.append(point)
-
-        vels.append(vel)
-        accs.append(acc)
-
-
-    S = n_knots
-    T = 5
-
-    m = S/T
-
-    s = np.linspace(0, S, 1000) 
-    ts = s/m
-
-
-  
-    plt.plot(ts, curve[:,0], label = "position_x")
-    plt.plot(ts, curve[:,1], label = "position_y")
-
-    plt.plot(ts, m *dcurve[:,0], label = "velocity_x")
-    plt.plot(ts, m *dcurve[:,1], label = "velocity_y")
-
-    plt.plot(ts, m**2 * ddcurve[:,0], label = "acceleration_x")
-    plt.plot(ts, m**2 *ddcurve[:,1], label = "acceleration_y")
-
-    plt.plot(ts, m**3 * dddcurve[:,0], label = "jerk_x")
-    plt.plot(ts, m**3 * dddcurve[:,1], label = "jerk_y")
-
-
+    # control_points[0,0] = 100
     
-    # plt.plot(dcurve[:,0], dcurve[:,1], label = "velocity")
-    # plt.plot(ddcurve[:,0], ddcurve[:,1], label = "acceleration")
+    p = spline_eval_at_s(control_points, 0.5, derivate = 0)
+    v = spline_eval_at_s(control_points, 0.5, derivate = 1)
+    a = spline_eval_at_s(control_points, 0.5, derivate = 2) 
 
-    plt.legend()
+    print("p = ", p)
+    print("v = ", v)
+    print("a = ", a)
 
-    plt.show()  
+    for i in range(0, 70):
+        p = spline_eval_at_s(control_points, i/10, derivate = 0)
+        v = spline_eval_at_s(control_points, i/10, derivate = 1)
+        a = spline_eval_at_s(control_points, i/10, derivate = 2)
 
-    
-    hulls = get_minvo_hulls(control_points, derivative = 0)
-    plt.axis('equal')
-    for hull in hulls:
-        plt.scatter(hull[:,0], hull[:,1])
-        try:
-            indices = ConvexHull(hull)
-            for simplex in indices.simplices:
-                plt.plot(hull[simplex,0], hull[simplex,1], label = "hull")
-        except:
-            pass
-
-    plt.plot(curve[:,0], curve[:,1], "--", label = "position", color = "red")
-    plt.show()
-
-    hulls = get_minvo_hulls(control_points, derivative = 1)
-    plt.axis('equal')
-    for hull in hulls:
-        plt.scatter(hull[:,0], hull[:,1])
-        plt.plot(hull[:,0], hull[:,1])
-        try:
-            indices = ConvexHull(hull)
-            for simplex in indices.simplices:
-                plt.plot(hull[simplex,0], hull[simplex,1], label = "hull")
-        except:
-            pass
-
-
-
-
-    plt.plot(dcurve[:,0], dcurve[:,1], "--", label = "position", color = "red")
-    plt.show()
-
-
-
-    hulls = get_minvo_hulls(control_points, derivative = 2)
-    plt.axis('equal')
-    for hull in hulls:
-        plt.scatter(hull[:,0], hull[:,1],color ="blue")
-        plt.plot(hull[:,0], hull[:,1])
-        try:
-            indices = ConvexHull(hull)
-            for simplex in indices.simplices:
-                plt.plot(hull[simplex,0], hull[simplex,1], label = "hull")
-        except:
-            pass
-
-    plt.plot(ddcurve[:,0], ddcurve[:,1], "--", label = "position", color = "red")
-    plt.show()
-
-
-    hulls = get_minvo_hulls(control_points, derivative = 3)
-
-    
-
-    plt.axis('equal')
-    for hull in hulls:
-        plt.scatter(hull[:,0], hull[:,1], color = "blue")
-        plt.plot(hull[:,0], hull[:,1])
-        try:
-            indices = ConvexHull(hull)
-            for simplex in indices.simplices:
-                plt.plot(hull[simplex,0], hull[simplex,1], label = "hull")
-        except:
-            pass
-
-    plt.plot(dddcurve[:,0], dddcurve[:,1], "--", label = "position", color = "red")
-    plt.show()
-
-
+        assert np.allclose(p, pos(i/10))
+        assert np.allclose(v, vel(i/10))
+        assert np.allclose(a, accel(i/10))
     
