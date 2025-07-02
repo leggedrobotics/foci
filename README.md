@@ -26,7 +26,7 @@ FOCI is a novel method to compute orientation aware trajectories for robots usin
 ## Installation
 0. Install `git lfs`
 1. Clone the repo with `git clone git@github.com:leggedrobotics/foci.git`
-2. Obtain a [HSL Licence](https://www.hsl.rl.ac.uk) for a linear solver (`ma27`/ `ma57`), download the corresponding files, rename the extracted folder to `coinhsl` and move it to the root directory in this repository. 
+2. Obtain a licence for the `MA27` solver from [https://licences.stfc.ac.uk/product/coin-hsl](https://licences.stfc.ac.uk/product/coin-hsl), download the corresponding ZIP file, rename the extracted folder to `coinhsl` and move it to the root directory of this repository. 
 3. `docker build -t rsl/foci .` to build the provided docker container.
 4. `docker run -it -v .:/workspace --gpus all -p 127.0.0.1:8080:8080 rsl/foci` to run and attach to the container.
 5. `pip install -e .` to install the `foci` in the docker container.
