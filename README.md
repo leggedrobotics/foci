@@ -44,3 +44,7 @@ If you find this work useful, please consider citing our paper:
         url           = {https://arxiv.org/abs/2505.08510}
 }
 ```
+
+
+## Data Attribution
+The Gaussian splat file (`demo/data/stonehenge.ply`) included in this repository was generated using processed data from the [Splat-Nav project](https://github.com/chengine/splatnav), which is licensed under the MIT License. 

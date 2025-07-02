@@ -2,7 +2,6 @@
 *.pyc
 *.npy
 *.csv
-*.ply
 
 # vs code
 .vscode/
