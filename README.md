@@ -24,11 +24,13 @@ FOCI is a novel method to compute orientation aware trajectories for robots usin
 
 
 ## Installation
-1. Obtain a [HSL Licence](https://www.hsl.rl.ac.uk) for a linear solver (`ma27`/ `ma57`), download the corresponding files, rename the extracted folder to `coinhsl` and move it to the root directory in this repository. 
-2. `docker build -t rsl/foci .` to build the provided docker container.
-3. `docker run -it -v .:/workspace --gpus all -p 127.0.0.1:8080:8080 rsl/foci` to run and attach to the container.
-4. `pip install -e .` to install the `foci` in the docker container.
-5. `python3 demos/stonehenge.py` to run the demo script. Open `127.0.0.1:8080` in your webbrowser to a see a visualisation similar to the one in this `README.md`
+0. Install `git lfs`
+1. Clone the repo with `git clone git@github.com:leggedrobotics/foci.git`
+2. Obtain a [HSL Licence](https://www.hsl.rl.ac.uk) for a linear solver (`ma27`/ `ma57`), download the corresponding files, rename the extracted folder to `coinhsl` and move it to the root directory in this repository. 
+3. `docker build -t rsl/foci .` to build the provided docker container.
+4. `docker run -it -v .:/workspace --gpus all -p 127.0.0.1:8080:8080 rsl/foci` to run and attach to the container.
+5. `pip install -e .` to install the `foci` in the docker container.
+6. `python3 demos/stonehenge.py` to run the demo script. Open `127.0.0.1:8080` in your webbrowser to a see a visualisation similar to the one in this `README.md`
 
 ## Citing
 If you find this work useful, please consider citing our paper:
@@ -48,3 +50,4 @@ If you find this work useful, please consider citing our paper:
 
 ## Data Attribution
 The Gaussian splat file (`demo/data/stonehenge.ply`) included in this repository was generated using processed data from the [Splat-Nav project](https://github.com/chengine/splatnav), which is licensed under the MIT License. 
+We acknowledge the authors of Splat-Nav for making their resources available.
