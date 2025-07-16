@@ -183,16 +183,9 @@ if __name__ == "__main__":
         v = spline_eval_at_s(control_points, i/10, derivate = 1)
         a = spline_eval_at_s(control_points, i/10, derivate = 2)
 
-        if not np.allclose(p, pos(i/10)):
-            print(f"Failed at {i/10}, expected {pos(i/10)}, got {p}")
-        if not np.allclose(v, vel(i/10)):
-            print(f"Failed at {i/10}, expected {vel(i/10)}, got {v}")
-        if not np.allclose(a, accel(i/10)):
-            print(f"Failed at {i/10}, expected {accel(i/10)}, got {a}")
-
-        # assert np.allclose(p, pos(i/10)), f"Failed at {i/10}, expected {pos(i/10)}, got {p}"
-        # assert np.allclose(v, vel(i/10)), f"Failed at {i/10}, expected {vel(i/10)}, got {v}"
-        # assert np.allclose(a, accel(i/10)), f"Failed at {i/10}, expected {accel(i/10)}, got {a}"
+        assert np.allclose(p, pos(i/10)), f"Failed at {i/10}, expected {pos(i/10)}, got {p}"
+        assert np.allclose(v, vel(i/10)), f"Failed at {i/10}, expected {vel(i/10)}, got {v}"
+        assert np.allclose(a, accel(i/10)), f"Failed at {i/10}, expected {accel(i/10)}, got {a}"
 
 print("all tests passed")
     
