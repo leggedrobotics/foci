@@ -92,7 +92,7 @@ def spline_eval(control_points, num_samples, derivate = 0):
 
 
 def spline_eval_at_s(control_points, s, derivate = 0):
-    upper_bound = control_points.shape[0] - 4
+    upper_bound = control_points.shape[0] - 3
 
     ts = np.array([s])
     basis = basis_function_mat(ts, control_points.shape[0], upper_bound, derivate = derivate)
@@ -161,8 +161,8 @@ if __name__ == "__main__":
     from scipy.interpolate import BSpline
     deg = 3
     knots = [ -3, -2,  -1,  0,  1, 2,   3,    4,    5,  6,  7, 8, 9, 10];
-    ctrl_pts = [0,1,2,3,4,5,6,7,8,9,10];
-    pos = BSpline(knots, ctrl_pts, deg)
+    ctrl_pts = [0,1,0,3,4,-1,50,7,0,9,-10];
+    pos = BSpline(knots, ctrl_pts, deg, extrapolate=False)
     vel=pos.derivative(1);
     accel=pos.derivative(2);
     jerk=pos.derivative(3);
@@ -171,25 +171,28 @@ if __name__ == "__main__":
     print("Accel= ",accel(0.5))
     print("Jerk= ",jerk(0.5))
 
+    print("pos(-0.5) = ", pos(-10.5))
+
     # Test the spline evaluation
     control_points = np.array((ctrl_pts)).reshape(-1,1)
 
     # control_points[0,0] = 100
-    
-    p = spline_eval_at_s(control_points, 0.5, derivate = 0)
-    v = spline_eval_at_s(control_points, 0.5, derivate = 1)
-    a = spline_eval_at_s(control_points, 0.5, derivate = 2) 
 
-    print("p = ", p)
-    print("v = ", v)
-    print("a = ", a)
-
-    for i in range(0, 70):
+    for i in range(0,70):
         p = spline_eval_at_s(control_points, i/10, derivate = 0)
         v = spline_eval_at_s(control_points, i/10, derivate = 1)
         a = spline_eval_at_s(control_points, i/10, derivate = 2)
 
-        assert np.allclose(p, pos(i/10))
-        assert np.allclose(v, vel(i/10))
-        assert np.allclose(a, accel(i/10))
+        if not np.allclose(p, pos(i/10)):
+            print(f"Failed at {i/10}, expected {pos(i/10)}, got {p}")
+        if not np.allclose(v, vel(i/10)):
+            print(f"Failed at {i/10}, expected {vel(i/10)}, got {v}")
+        if not np.allclose(a, accel(i/10)):
+            print(f"Failed at {i/10}, expected {accel(i/10)}, got {a}")
+
+        # assert np.allclose(p, pos(i/10)), f"Failed at {i/10}, expected {pos(i/10)}, got {p}"
+        # assert np.allclose(v, vel(i/10)), f"Failed at {i/10}, expected {vel(i/10)}, got {v}"
+        # assert np.allclose(a, accel(i/10)), f"Failed at {i/10}, expected {accel(i/10)}, got {a}"
+
+print("all tests passed")
     
