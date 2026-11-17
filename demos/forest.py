@@ -10,11 +10,15 @@ from src.initialize.rrtstar_initializer import RRTStarInitializer
 from src.planning.planner import Planner
 from src.planning.joints import JointGroups
 from src.visualization.visualizer import RobotVisualizer
-from benchmark.utils import minimum_robot_environment_distance
+from src.benchmark.utils import minimum_robot_environment_distance
+
+RECORD_VIDEO = True
+RECORD_FPS = 10
 
 def forest_demo():
-    
+
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    record_path = os.path.join(os.path.dirname(__file__), "forest.mp4")
     ply_file = os.path.join(PROJECT_ROOT, "data/Forest.ply")
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)
@@ -109,7 +113,7 @@ def forest_demo():
     vis.visualize_robot_gaussians()
     vis.visualize_path()
     vis.visualize_initializer_path(result.initial_trajectory)
-    vis.visualize_trajectory(loop=True)
+    vis.visualize_trajectory(loop=True, record=RECORD_VIDEO, record_path=record_path, record_fps=RECORD_FPS)
     
 
 if __name__ == "__main__":

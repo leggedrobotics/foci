@@ -19,10 +19,13 @@ from src.benchmark.utils import (
 from src.benchmark.stomp_planner import STOMPPlanner
 from src.benchmark.chomp_planner import CHOMPPlanner
 
+RECORD_VIDEO = True
+RECORD_FPS = 10
 
 
-def benchmark_forest(): 
+def benchmark_forest():
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    record_path = os.path.join(os.path.dirname(__file__), "benchmark_forest.mp4")
     ply_file = os.path.join(PROJECT_ROOT, "data/Forest.ply")
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)
@@ -220,7 +223,7 @@ def benchmark_forest():
     vis.visualize_path(name="FOCI")
     vis.visualize_initializer_path(stomp_result.initial_trajectory, name="STOMP", color=(255, 0, 255))
     vis.visualize_initializer_path(chomp_result.trajectory, name="CHOMP", color=(0, 0, 255))
-    vis.visualize_trajectory(loop=True)
+    vis.visualize_trajectory(loop=True, record=RECORD_VIDEO, record_path=record_path, record_fps=RECORD_FPS)
 
     
 if __name__ == "__main__":

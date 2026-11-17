@@ -11,9 +11,13 @@ from src.planning.joints import JointGroups
 from src.visualization.visualizer import RobotVisualizer
 from src.benchmark.utils import minimum_robot_environment_distance
 
+RECORD_VIDEO = True
+RECORD_FPS = 10
+
 def coffe_table_demo():
-    
+
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    record_path = os.path.join(os.path.dirname(__file__), "coffe_table.mp4")
     ply_file = os.path.join(PROJECT_ROOT, "data", "Coffee_Table.ply")
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data(ply_file)
@@ -126,7 +130,7 @@ def coffe_table_demo():
     vis.visualize_robot_gaussians()
     vis.visualize_path()
     vis.visualize_initializer_path(result.initial_trajectory)
-    vis.visualize_trajectory(loop=True)
+    vis.visualize_trajectory(loop=True, record=RECORD_VIDEO, record_path=record_path, record_fps=RECORD_FPS)
     
 
 if __name__ == "__main__":

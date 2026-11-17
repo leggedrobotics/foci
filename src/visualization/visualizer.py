@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import imageio.v3 as iio
 from scipy.spatial.transform import Rotation
 from viser import ViserServer
 from viser.extras import ViserUrdf
@@ -335,36 +336,61 @@ class RobotVisualizer:
         self,
         dt: float = 0.1,
         loop: bool = True,
+        record: bool = False,
+        record_path: str | None = None,
+        record_fps: float = 10.0,
     ):
         """
         Animate robot and robot Gaussians.
+
+        If record is True, frames are grabbed from a connected browser client
+        on every step and written to record_path (mp4) once you quit with
+        'q' + Enter (or on any other exit) -- recording waits for a client
+        to connect before the animation starts.
         """
         sample_idx = 0
         num_samples = self.trajectory.shape[0]
-        
-        while True:
-        
-            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                key = sys.stdin.readline().strip()
-                if key.lower() == "q":
-                    print("Stopping visualization.")
-                    break
 
-            q = self.trajectory[sample_idx]
+        frames = []
+        client = None
+        if record:
+            print(f"Waiting for a browser client to connect before recording to {record_path} ...")
+            while len(self.server.get_clients()) == 0:
+                time.sleep(0.1)
+            client = next(iter(self.server.get_clients().values()))
+            print(f"Client connected -- recording until you quit (fps = {record_fps}).")
 
-            self._update_robot(q, sample_idx)
-            self._update_robot_gaussians(sample_idx)
-            self._update_camera(sample_idx)
+        try:
+            while True:
 
-            time.sleep(dt)
+                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                    key = sys.stdin.readline().strip()
+                    if key.lower() == "q":
+                        print("Stopping visualization.")
+                        break
 
-            sample_idx += 1
+                q = self.trajectory[sample_idx]
 
-            if sample_idx >= num_samples:
-                if loop:
-                    sample_idx = 0
-                else:
-                    break
+                self._update_robot(q, sample_idx)
+                self._update_robot_gaussians(sample_idx)
+                self._update_camera(sample_idx)
+
+                if client is not None:
+                    frames.append(client.get_render(height=720, width=1280))
+
+                time.sleep(dt)
+
+                sample_idx += 1
+
+                if sample_idx >= num_samples:
+                    if loop:
+                        sample_idx = 0
+                    else:
+                        break
+        finally:
+            if client is not None and frames:
+                iio.imwrite(record_path, frames, fps=record_fps)
+                print(f"\nSaved {len(frames)} frames to {record_path}.")
 
     def _update_robot(self, q: np.ndarray, sample_idx: int):
         """
@@ -506,6 +532,11 @@ class RobotVisualizerOnline:
         camera_offset: np.ndarray | None = None,
         camera_lookahead: float = 0.5,
         duration: float | None = None,
+        orbit_camera: bool = False,
+        orbit_center: np.ndarray | None = None,
+        orbit_radius: float = 6.0,
+        orbit_height: float = 3.0,
+        orbit_period: float = 20.0,
     ):
         trajectory = np.asarray(trajectory, dtype=float)
 
@@ -544,6 +575,19 @@ class RobotVisualizerOnline:
         )
         self.camera_lookahead = float(camera_lookahead)
 
+        # Orbit camera circles orbit_center at a fixed radius/height instead
+        # of following the robot -- for recording a slow walkthrough of the
+        # whole scene rather than a chase cam. Takes priority over
+        # follow_camera when both are set.
+        self.orbit_camera = orbit_camera
+        self.orbit_center = (
+            np.asarray(orbit_center, dtype=float)
+            if orbit_center is not None
+            else np.zeros(3)
+        )
+        self.orbit_radius = float(orbit_radius)
+        self.orbit_height = float(orbit_height)
+        self.orbit_period = float(orbit_period)
 
         self.server = ViserServer()
         self.robot_urdf = robot.urdf_path
@@ -897,37 +941,71 @@ class RobotVisualizerOnline:
         self,
         dt: float = 0.1,
         loop: bool = True,
+        record: bool = False,
+        record_path: str | None = None,
+        record_fps: float = 10.0,
+        record_duration: float | None = None,
     ):
         """
         Animate robot and robot Gaussians.
+
+        If record is True, frames are grabbed from a connected browser client
+        on every step and written to record_path (mp4) -- recording waits for
+        a client to connect before the animation starts, then runs until you
+        quit with 'q' + Enter, or automatically after record_duration seconds
+        if given (useful for an orbit_camera walkthrough of a fixed length).
         """
         sample_idx = 0
+        step = 0
         num_samples = self.trajectory.shape[0]
-        
-        while True:
-        
-            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                key = sys.stdin.readline().strip()
-                if key.lower() == "q":
-                    print("Stopping visualization.")
+
+        frames = []
+        client = None
+        if record:
+            print(f"Waiting for a browser client to connect before recording to {record_path} ...")
+            while len(self.server.get_clients()) == 0:
+                time.sleep(0.1)
+            client = next(iter(self.server.get_clients().values()))
+            print(f"Client connected -- recording until you quit (fps = {record_fps}).")
+
+        try:
+            while True:
+
+                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                    key = sys.stdin.readline().strip()
+                    if key.lower() == "q":
+                        print("Stopping visualization.")
+                        break
+
+                q = self.trajectory[sample_idx]
+                elapsed_time = step * dt
+
+                self._update_robot(q, sample_idx)
+                self._update_robot_gaussians(sample_idx)
+                self._update_obstacles(sample_idx)
+                self._update_camera(sample_idx, elapsed_time)
+
+                if client is not None:
+                    frames.append(client.get_render(height=720, width=1280))
+
+                if record_duration is not None and elapsed_time >= record_duration:
+                    print(f"\nReached record_duration = {record_duration} s, stopping.")
                     break
 
-            q = self.trajectory[sample_idx]
+                time.sleep(dt)
 
-            self._update_robot(q, sample_idx)
-            self._update_robot_gaussians(sample_idx)
-            self._update_obstacles(sample_idx)
-            self._update_camera(sample_idx)
+                step += 1
+                sample_idx += 1
 
-            time.sleep(dt)
-
-            sample_idx += 1
-
-            if sample_idx >= num_samples:
-                if loop:
-                    sample_idx = 0
-                else:
-                    break
+                if sample_idx >= num_samples:
+                    if loop:
+                        sample_idx = 0
+                    else:
+                        break
+        finally:
+            if client is not None and frames:
+                iio.imwrite(record_path, frames, fps=record_fps)
+                print(f"\nSaved {len(frames)} frames to {record_path}.")
 
     def _update_robot(self, q: np.ndarray, sample_idx: int):
         """
@@ -1001,14 +1079,31 @@ class RobotVisualizerOnline:
             handle.position = mean
             handle.wxyz = quat_wxyz
 
-    def _update_camera(self, sample_idx: int):
+    def _update_camera(self, sample_idx: int, elapsed_time: float = 0.0):
         """
-        Optionally keep the viewer camera above the robot/task point.
+        Optionally move the viewer camera.
 
-        Uses robot.f_task(q), so it is robot-agnostic:
-        - for drones, this is usually the drone center;
-        - for manipulators, this is usually the end-effector.
+        orbit_camera circles orbit_center at a fixed radius/height as a
+        function of elapsed_time, regardless of the robot -- for a slow,
+        full walkthrough of a scene. It takes priority over follow_camera,
+        which instead chases robot.f_task(q) (robot-agnostic: the drone
+        center, or a manipulator's end-effector).
         """
+        if self.orbit_camera:
+            angle = 2.0 * np.pi * (elapsed_time / self.orbit_period)
+            camera_position = self.orbit_center + np.array([
+                self.orbit_radius * np.cos(angle),
+                self.orbit_radius * np.sin(angle),
+                self.orbit_height,
+            ])
+
+            for client in self.server.get_clients().values():
+                with client.atomic():
+                    client.camera.position = camera_position
+                    client.camera.look_at = self.orbit_center
+
+            return
+
         if not self.follow_camera:
             return
 

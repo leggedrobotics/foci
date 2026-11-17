@@ -4,6 +4,7 @@ import time
 import os
 
 import numpy as np
+import imageio.v3 as iio
 
 from src.utils.ply import extract_splat_data
 from src.robots.drone import StandardDroneRobot, DroneGaussian
@@ -13,6 +14,7 @@ from src.planning.planner_online import OnlinePlanner
 from src.planning.joints import JointGroups
 from src.initialize.straight_line import StraightLineInitializer
 from src.visualization.visualizer import RobotVisualizerOnline
+from src.benchmark.utils import path_length
 
 
 # Both source clouds are dense captured point clouds (one Gaussian per point);
@@ -69,6 +71,20 @@ POINT_SIGMA = 0.01
 # planning -- otherwise the optimizer would see a "safe" region that is
 # actually still inside the object.
 OBSTACLE_INFLATION = 3.5
+
+# Set to True to record the visualization to an mp4 instead of (or besides)
+# just watching it live -- frames are grabbed from a connected browser client,
+# so a client must be connected before recording can start.
+RECORD_VIDEO = True
+RECORD_PATH = os.path.join(os.path.dirname(__file__), "barrel_rock_epitrochoid.mp4")
+RECORD_FPS = 15
+
+# Camera slowly orbits the whole rock + barrels course once over
+# ORBIT_PERIOD seconds (independent of the drone/barrel animation, which
+# keeps looping underneath at its own faster pace) so the recording shows
+# the full scene rather than just chasing the drone. Recording stops
+# automatically once the orbit completes.
+ORBIT_PERIOD = 26.0
 
 
 def _splat_size(means: np.ndarray) -> float:
@@ -188,13 +204,13 @@ def barrel_rock_epitrochoid_demo():
     # so all three stay close together -- their height (in
     # BARREL_HEIGHT_FRACTIONS) is what places them above the rest.
     barrel_square_centers = np.array([
-        [-line_offset, 0.0],                                         # front
-        [line_offset, 0.0],                                          # back
-        [0.0, -side_offset],                                         # left
-        [0.0, side_offset],                                          # right
-        [0.0, 0.0],                                                  # center, above
-        [line_offset * HIGH_BARREL_SPREAD, -side_offset * HIGH_BARREL_SPREAD],  # back-left, above
-        [-line_offset * HIGH_BARREL_SPREAD, side_offset * HIGH_BARREL_SPREAD],  # front-right, above
+        [-line_offset, 0.0],                                                     # front
+        [line_offset, 0.0],                                                      # back
+        [0.0, -side_offset],                                                     # left
+        [0.0, side_offset],                                                      # right
+        [0.0, 0.0],                                                              # center, above
+        [line_offset * HIGH_BARREL_SPREAD, -side_offset * HIGH_BARREL_SPREAD],   # back-left, above
+        [-line_offset * HIGH_BARREL_SPREAD, side_offset * HIGH_BARREL_SPREAD],   # front-right, above
     ])
 
     barrel_base_xyz = []
@@ -269,8 +285,25 @@ def barrel_rock_epitrochoid_demo():
     print(f"\n--- StandardDroneRobot through the rock + {N_BARRELS} barrels on the flight line ---")
     print(f"Success: {result.success}  ({result.solver_stats.get('return_status')})")
     print(f"Solve time: {result.timings['solve']:.3f} s")
+    print(f"Path length: {path_length(result.trajectory):.3f} m")
 
-    vis = RobotVisualizerOnline(robot=robot, trajectory=result.trajectory, duration=duration)
+    # Orbit camera: centered on the course at its median height, wide enough
+    # to keep the rhombus of barrels in frame, high enough to look slightly
+    # down on the three barrels flying above the rest.
+    orbit_center = np.array([0.0, 0.0, flight_height])
+    orbit_radius = flight_radius + 1.0
+    orbit_height = HIGH_BARREL_HEIGHT_FRACTION * rock_height * 1.15
+
+    vis = RobotVisualizerOnline(
+        robot=robot,
+        trajectory=result.trajectory,
+        duration=duration,
+        orbit_camera=True,
+        orbit_center=orbit_center,
+        orbit_radius=orbit_radius,
+        orbit_height=orbit_height,
+        orbit_period=ORBIT_PERIOD,
+    )
     vis.visualize_goal(goal)
     vis.visualize_robot_gaussians()
     vis.visualize_path()
@@ -296,25 +329,53 @@ def barrel_rock_epitrochoid_demo():
     ]
 
     print("\nVisualizing scene. Press 'q' + Enter to quit.")
-    sample_idx = 0
 
-    while True:
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-            if sys.stdin.readline().strip().lower() == "q":
-                print("Stopping visualization.")
+    frames = []
+    client = None
+    if RECORD_VIDEO:
+        print(f"Waiting for a browser client to connect before recording to {RECORD_PATH} ...")
+        while len(vis.server.get_clients()) == 0:
+            time.sleep(0.1)
+        client = next(iter(vis.server.get_clients().values()))
+        print(f"Client connected -- recording until you quit (fps = {RECORD_FPS}).")
+
+    sample_idx = 0
+    step = 0
+
+    try:
+        while True:
+            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                if sys.stdin.readline().strip().lower() == "q":
+                    print("Stopping visualization.")
+                    break
+
+            elapsed_time = step * 0.1
+
+            q = result.trajectory[sample_idx]
+            vis._update_robot(q, sample_idx)
+            vis._update_robot_gaussians(sample_idx)
+            vis._update_camera(sample_idx, elapsed_time)
+
+            for i, handle in enumerate(barrel_handles):
+                handle.position = barrel_base_xyz[i] + barrel_trajectories[i][sample_idx]
+
+            if client is not None:
+                frames.append(client.get_render(height=720, width=1280))
+                if len(frames) % 20 == 0:
+                    print(f"  ...captured {len(frames)} frames ({elapsed_time:.1f}/{ORBIT_PERIOD:.0f} s)")
+
+            if RECORD_VIDEO and elapsed_time >= ORBIT_PERIOD:
+                print(f"\nReached ORBIT_PERIOD = {ORBIT_PERIOD} s, stopping.")
                 break
 
-        q = result.trajectory[sample_idx]
-        vis._update_robot(q, sample_idx)
-        vis._update_robot_gaussians(sample_idx)
-        vis._update_camera(sample_idx)
+            time.sleep(0.1)
 
-        for i, handle in enumerate(barrel_handles):
-            handle.position = barrel_base_xyz[i] + barrel_trajectories[i][sample_idx]
-
-        time.sleep(0.1)
-
-        sample_idx = (sample_idx + 1) % NUM_SAMPLES
+            step += 1
+            sample_idx = (sample_idx + 1) % NUM_SAMPLES
+    finally:
+        if client is not None and frames:
+            iio.imwrite(RECORD_PATH, frames, fps=RECORD_FPS)
+            print(f"\nSaved {len(frames)} frames to {RECORD_PATH}.")
 
 
 if __name__ == "__main__":

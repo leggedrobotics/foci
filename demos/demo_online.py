@@ -5,7 +5,7 @@ from src.robots.mobile import MobileRobot, MobileGaussian
 from src.robots.manipulator import ManipulatorRobot, LinkGaussian
 # from src.environment.environment import GaussianEnvironment
 from src.environment.obstacle import StaticObstacle, MobileObstacle
-from src.environment.environment_online import GaussianEnvironmentOnline
+from src.environment.environment import GaussianEnvironmentOnline
 from src.initialize.rrtstar_initializer import RRTStarInitializer
 from src.planning.planner_online import OnlinePlanner
 from src.planning.joints import JointGroups
@@ -103,9 +103,9 @@ def mobile_robot_demo():
     vis = RobotVisualizerOnline(
         robot=robot,
         trajectory=result.trajectory,
-    
+
     )
-    
+
     vis.visualize_goal(goal)
     vis.visualize_obstacles_online(environment)
     vis.visualize_robot_gaussians()
