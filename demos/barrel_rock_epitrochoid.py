@@ -75,7 +75,7 @@ OBSTACLE_INFLATION = 3.5
 # Set to True to record the visualization to an mp4 instead of (or besides)
 # just watching it live -- frames are grabbed from a connected browser client,
 # so a client must be connected before recording can start.
-RECORD_VIDEO = True
+RECORD_VIDEO = False
 RECORD_PATH = os.path.join(os.path.dirname(__file__), "barrel_rock_epitrochoid.mp4")
 RECORD_FPS = 15
 

@@ -11,7 +11,7 @@ from src.planning.joints import JointGroups
 from src.visualization.visualizer import RobotVisualizer
 from src.benchmark.utils import minimum_robot_environment_distance
 
-RECORD_VIDEO = True
+RECORD_VIDEO = False
 RECORD_FPS = 10
 
 def coffe_table_demo():
@@ -49,7 +49,6 @@ def coffe_table_demo():
         LinkGaussian("forearm_link",       0.7, np.eye(3) * 0.2**2),
         LinkGaussian("wrist_1_link",       0.5, np.eye(3) * 0.1**2),
         LinkGaussian("wrist_2_link",       0.5, np.eye(3) * 0.1**2),
-        LinkGaussian("wrist_3_link",       0.5, np.eye(3) * 0.1**2),
     ]
 
     theta_start = np.array([np.pi, 0.0, 0.0, 0.0, 0.0, 0.0])

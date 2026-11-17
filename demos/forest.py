@@ -12,7 +12,7 @@ from src.planning.joints import JointGroups
 from src.visualization.visualizer import RobotVisualizer
 from src.benchmark.utils import minimum_robot_environment_distance
 
-RECORD_VIDEO = True
+RECORD_VIDEO = False
 RECORD_FPS = 10
 
 def forest_demo():

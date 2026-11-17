@@ -19,7 +19,7 @@ from src.benchmark.utils import (
 from src.benchmark.stomp_planner import STOMPPlanner
 from src.benchmark.chomp_planner import CHOMPPlanner
 
-RECORD_VIDEO = True
+RECORD_VIDEO = False
 RECORD_FPS = 10
 
 # RRTStarInitializer sets OMPL's global RNG seed once at construction, not
