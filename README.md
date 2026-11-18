@@ -5,13 +5,13 @@
     <th align="center" style="border: 1px solid; padding: 6px;">Static Environment</th>
   </tr>
   <tr>
-    <td style="border: 1px solid; padding: 6px;"><img src="./docs/stonerobot.gif" width="640" height="320" alt="Stonehenge paths" /></td>
+    <td style="border: 1px solid; padding: 6px;"><img src="./docs/stonerobot.gif" width="480" height="240" alt="Stonehenge paths" /></td>
   </tr>
   <tr>
     <th align="center" style="border: 1px solid; padding: 6px;">Dynamic Environment</th>
   </tr>
   <tr>
-    <td style="border: 1px solid; padding: 6px;"><img src="./docs/barrel_rock_epitrochoid.gif" width="640" height="320" alt="Rock and barrels course" /></td>
+    <td style="border: 1px solid; padding: 6px;"><img src="./docs/barrel_rock_epitrochoid.gif" width="480" height="240" alt="Rock and barrels course" /></td>
   </tr>
 </table>
 
