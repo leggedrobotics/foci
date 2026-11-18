@@ -1,14 +1,16 @@
 # FOCI: Trajectory Optimization on Gaussian Splats for Gaussian Robots
 
-- **Project page:** [https://rffr.leggedrobotics.com/works/foci/](https://rffr.leggedrobotics.com/works/foci/)
-
 <table align="center" border="1" style="border-collapse: collapse;">
   <tr>
     <th align="center" style="border: 1px solid; padding: 6px;">Static Environment</th>
-    <th align="center" style="border: 1px solid; padding: 6px;">Dynamic Environment</th>
   </tr>
   <tr>
     <td style="border: 1px solid; padding: 6px;"><img src="./docs/stonerobot.gif" width="480" height="240" alt="Stonehenge paths" /></td>
+  </tr>
+  <tr>
+    <th align="center" style="border: 1px solid; padding: 6px;">Dynamic Environment</th>
+  </tr>
+  <tr>
     <td style="border: 1px solid; padding: 6px;"><img src="./docs/barrel_rock_epitrochoid.gif" width="480" height="240" alt="Rock and barrels course" /></td>
   </tr>
 </table>
