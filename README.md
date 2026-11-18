@@ -35,18 +35,13 @@ FOCI is a novel method to compute orientation aware trajectories for robots usin
 When using FOCI, please cite:
 
 ```bibtex
-@INPROCEEDINGS{11245845,
-  author={Andreu, Mario Gomez and Wilder-Smith, Maximum and Klemm, Victor and Patil, Vaishakh and Tordesillas, Jesus and Hutter, Marco},
+@inproceedings{andreu2025foci,
+  title={Foci: Trajectory optimization on gaussian splats},
+  author={Andreu, Mario Gomez and Klemm, Victor and Patil, Vaishakh and Tordesillas, Jesus and Hutter, Marco},
   booktitle={2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
-  title={FOCI: Trajectory Optimization on Gaussian Splats},
+  pages={1884--1891},
   year={2025},
-  volume={},
-  number={},
-  pages={1884-1891},
-  keywords={Three-dimensional displays;Simultaneous localization and mapping;Trajectory planning;Robot kinematics;Robot sensing systems;Neural radiance field;Planning;Collision avoidance;Robots;Trajectory optimization},
-  doi={10.1109/IROS60139.2025.11245845},
-  ISSN={2153-0866},
-  month={Oct},
+  organization={IEEE}
 }
 ```
 
