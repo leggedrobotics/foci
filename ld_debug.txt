@@ -1,0 +1,50 @@
+     13745:	find library=libm.so.6 [0]; searching
+     13745:	 search cache=/etc/ld.so.cache
+     13745:	  trying file=/lib/x86_64-linux-gnu/libm.so.6
+     13745:	
+     13745:	find library=libexpat.so.1 [0]; searching
+     13745:	 search cache=/etc/ld.so.cache
+     13745:	  trying file=/lib/x86_64-linux-gnu/libexpat.so.1
+     13745:	
+     13745:	find library=libz.so.1 [0]; searching
+     13745:	 search cache=/etc/ld.so.cache
+     13745:	  trying file=/lib/x86_64-linux-gnu/libz.so.1
+     13745:	
+     13745:	find library=libc.so.6 [0]; searching
+     13745:	 search cache=/etc/ld.so.cache
+     13745:	  trying file=/lib/x86_64-linux-gnu/libc.so.6
+     13745:	
+     13745:	
+     13745:	calling init: /lib64/ld-linux-x86-64.so.2
+     13745:	
+     13745:	
+     13745:	calling init: /lib/x86_64-linux-gnu/libc.so.6
+     13745:	
+     13745:	
+     13745:	calling init: /lib/x86_64-linux-gnu/libz.so.1
+     13745:	
+     13745:	
+     13745:	calling init: /lib/x86_64-linux-gnu/libexpat.so.1
+     13745:	
+     13745:	
+     13745:	calling init: /lib/x86_64-linux-gnu/libm.so.6
+     13745:	
+     13745:	
+     13745:	initialize program: python
+     13745:	
+     13745:	
+     13745:	transferring control: python
+     13745:	
+python: can't open file '/mnt/c/Users/Carlos MC/Desktop/TFG/FOCI_Generico/isolate_imports.py': [Errno 2] No such file or directory
+     13745:	
+     13745:	calling fini: python [0]
+     13745:	
+     13745:	
+     13745:	calling fini: /lib/x86_64-linux-gnu/libm.so.6 [0]
+     13745:	
+     13745:	
+     13745:	calling fini: /lib/x86_64-linux-gnu/libexpat.so.1 [0]
+     13745:	
+     13745:	
+     13745:	calling fini: /lib/x86_64-linux-gnu/libz.so.1 [0]
+     13745:	
