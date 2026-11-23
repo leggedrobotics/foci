@@ -72,3 +72,5 @@ The following scenes were obtained from the [Polycam](https://poly.cam) communit
 
 These scenes are third-party assets and are **not** covered by the license of this repository's source code.
 We thank the Polycam community members for sharing their captures.
+
+For the manipulator experiments, the [UR5](https://www.universal-robots.com/es/blog/universal-robots-ur5/}{UR5) is used and the [ARDrone](https://github.com/mmyself/ros_ardrone/tree/master) for the aerial ones.
