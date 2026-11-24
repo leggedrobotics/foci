@@ -17,39 +17,8 @@
 
 FOCI is a novel method to compute orientation aware trajectories for robots using 3D Gaussian Splats to model both the robot and the environment. 
 
-
-## Authors
-
-- Mario Gomez Andreu\*<sup>1</sup>
-- Carlos Martínez\*<sup>2</sup>
-- Maximum Wilder-Smith\*<sup>1</sup>
-- Victor Klemm<sup>1</sup>
-- Vaishakh Patil<sup>1</sup>
-- Jesus Tordesillas<sup>2</sup>
-- Marco Hutter<sup>1</sup>
-
-\*Equal contribution
-<br><sup>1</sup> Robotic Systems Lab, ETH Zurich
-<br><sup>2</sup> Trustworthy Robotics and AI Lab (TRAIL), ICAI-Comillas
-
-## Citation
-
-When using FOCI, please cite:
-
-```bibtex
-@inproceedings{andreu2025foci,
-  title={Foci: Trajectory optimization on gaussian splats},
-  author={Andreu, Mario Gomez and Klemm, Victor and Patil, Vaishakh and Tordesillas, Jesus and Hutter, Marco},
-  booktitle={2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
-  pages={1884--1891},
-  year={2025},
-  organization={IEEE}
-}
-```
-
-
 ## Installation
-1. Clone the repo with `git clone git@github.com:leggedrobotics/foci.git`
+1. Clone the repo
 2. Obtain a licence for the `MA27` solver from [https://licences.stfc.ac.uk/product/coin-hsl](https://licences.stfc.ac.uk/product/coin-hsl), download the corresponding ZIP file, rename the extracted folder to `coinhsl` and move it to the root directory of this repository.
 3. Create the virtual environment with `python3 -m venv venv` and install dependencies with `pip install -r requirements.txt`.
 4. Download the Gaussian splat scenes listed under [Data Attribution](#data-attribution) and place them in the `data/` directory (these `.ply` files are not tracked by git, see `.gitignore`).
