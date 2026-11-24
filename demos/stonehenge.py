@@ -36,7 +36,15 @@ PATH_COLORS = [
 def stonehenge_demo():
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     record_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "stonehenge.mp4"))
-    ply_file = os.path.join(PROJECT_ROOT, "data", "stonehenge.ply")
+    # Tracked with Git LFS: without `git lfs pull` this path only holds a
+    # small text pointer instead of the splat file.
+    ply_file = os.path.join(PROJECT_ROOT, "demos", "data", "stonehenge.ply")
+    with open(ply_file, "rb") as f:
+        if f.read(40).startswith(b"version https://git-lfs"):
+            raise RuntimeError(
+                f"{ply_file} is a Git LFS pointer, not the splat file. "
+                "Install Git LFS and download it with: git lfs install && git lfs pull"
+            )
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)
 
