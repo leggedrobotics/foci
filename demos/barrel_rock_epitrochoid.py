@@ -14,7 +14,7 @@ from src.planning.planner_online import OnlinePlanner
 from src.planning.joints import JointGroups
 from src.initialize.straight_line import StraightLineInitializer
 from src.visualization.visualizer import RobotVisualizerOnline
-from src.benchmark.utils import path_length
+from src.benchmark.utils import save_results_csv, scene_size, task_path_length
 
 
 # Both source clouds are dense captured point clouds (one Gaussian per point);
@@ -76,8 +76,12 @@ OBSTACLE_INFLATION = 3.5
 # just watching it live -- frames are grabbed from a connected browser client,
 # so a client must be connected before recording can start.
 RECORD_VIDEO = False
-RECORD_PATH = os.path.join(os.path.dirname(__file__), "barrel_rock_epitrochoid.mp4")
+RECORD_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "barrel_rock_epitrochoid.mp4"))
 RECORD_FPS = 15
+
+# Statistics and final trajectory are written to the shared benchmark
+# results file (rows of scene "barrel_rock_epitrochoid" are replaced).
+RESULTS_CSV = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "results.csv"))
 
 # Camera slowly orbits the whole rock + barrels course once over
 # ORBIT_PERIOD seconds (independent of the drone/barrel animation, which
@@ -85,6 +89,10 @@ RECORD_FPS = 15
 # the full scene rather than just chasing the drone. Recording stops
 # automatically once the orbit completes.
 ORBIT_PERIOD = 26.0
+
+# Fraction of the default orbit distance (radius and height scaled together,
+# so the viewing angle stays the same): < 1 brings the camera closer.
+ORBIT_ZOOM = 0.75
 
 
 def _splat_size(means: np.ndarray) -> float:
@@ -238,6 +246,17 @@ def barrel_rock_epitrochoid_demo():
 
     environment = GaussianEnvironmentOnline(obstacles=[rock_obstacle] + barrel_obstacles)
 
+    # Scene size for the normalised path length, as for the other benchmarks
+    # (XY diagonal of the scene's bounding box): the box holding the rock and
+    # every barrel at every position along its loop, i.e. all the space the
+    # dynamic scene occupies during the trajectory.
+    scene_corners = [rock_means.min(axis=0), rock_means.max(axis=0)]
+    barrel_low, barrel_high = barrel_means.min(axis=0), barrel_means.max(axis=0)
+    for base_xyz, trajectory in zip(barrel_base_xyz, barrel_trajectories):
+        positions = base_xyz + trajectory
+        scene_corners += [barrel_low + positions.min(axis=0), barrel_high + positions.max(axis=0)]
+    scene = scene_size(np.array(scene_corners))
+
     gaussian_specs = [DroneGaussian(np.array([0.0, 0.0, 0.0]), np.diag([0.25**2, 0.35**2, 0.12**2]))]
     robot = StandardDroneRobot(urdf_path="urdfs/drone_example.urdf", gaussian_specs=gaussian_specs)
 
@@ -285,14 +304,37 @@ def barrel_rock_epitrochoid_demo():
     print(f"\n--- StandardDroneRobot through the rock + {N_BARRELS} barrels on the flight line ---")
     print(f"Success: {result.success}  ({result.solver_stats.get('return_status')})")
     print(f"Solve time: {result.timings['solve']:.3f} s")
-    print(f"Path length: {path_length(result.trajectory):.3f} m")
+    length = task_path_length(robot, result.trajectory)
+    print(f"Path length: {length:.3f} m  ({length / scene:.3f} x scene diagonal, {scene:.3f} m)")
+
+    save_results_csv(
+        os.path.abspath(RESULTS_CSV),
+        scene="barrel_rock_epitrochoid",
+        robot=robot,
+        trajectories={"FOCI": result.trajectory},
+        metrics={
+            "scene": {
+                "scene_diagonal_m": scene,
+                "n_environment_gaussians": len(environment.obstacles),
+                "n_robot_gaussians": len(gaussian_specs),
+            },
+            "FOCI": {
+                "success": bool(result.success),
+                "return_status": result.solver_stats.get("return_status"),
+                **{f"{key}_time_s": float(value) for key, value in result.timings.items()},
+                "path_length_m": float(length),
+                "path_length_norm": float(length / scene),
+                "duration_s": float(duration),
+            },
+        },
+    )
 
     # Orbit camera: centered on the course at its median height, wide enough
     # to keep the rhombus of barrels in frame, high enough to look slightly
     # down on the three barrels flying above the rest.
     orbit_center = np.array([0.0, 0.0, flight_height])
-    orbit_radius = flight_radius + 1.0
-    orbit_height = HIGH_BARREL_HEIGHT_FRACTION * rock_height * 1.15
+    orbit_radius = ORBIT_ZOOM * (flight_radius + 1.0)
+    orbit_height = ORBIT_ZOOM * HIGH_BARREL_HEIGHT_FRACTION * rock_height * 1.15
 
     vis = RobotVisualizerOnline(
         robot=robot,

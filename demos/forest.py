@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation as R
 from src.utils.ply import extract_splat_data_2
 from src.robots.drone import DroneRobot, DroneGaussian
 from src.environment.environment import GaussianEnvironment
-from src.initialize.rrtstar_initializer import RRTStarInitializer
+from src.initialize.straight_line import StraightLineInitializer
 from src.planning.planner import Planner
 from src.planning.joints import JointGroups
 from src.visualization.visualizer import RobotVisualizer
@@ -18,7 +18,7 @@ RECORD_FPS = 10
 def forest_demo():
 
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    record_path = os.path.join(os.path.dirname(__file__), "forest.mp4")
+    record_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "forest.mp4"))
     ply_file = os.path.join(PROJECT_ROOT, "data/Forest.ply")
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)
@@ -35,8 +35,11 @@ def forest_demo():
 
     gaussian_specs = [DroneGaussian(np.array([0.0, 0.0, 0.0], dtype=float), np.eye(3) * 0.1 ** 2)]
 
-    theta_start = np.array([0.0, -3.0, 1.0, 0.0])
-    goal = np.array([14.0, 5.0, 3.5])
+    # Query whose straight line goes through the large leaning trunk near
+    # (7, 0): both endpoints are in open space (> 1 m from any splat).
+    # Previous query: start (0, -3, 1), goal (17, 6, 3.5).
+    theta_start = np.array([-2.19, -0.11, 3.12, 0.0])
+    goal = np.array([13.24, 0.91, 3.6])
 
     robot = DroneRobot(
         urdf_path="urdfs/drone_example.urdf",
@@ -48,8 +51,8 @@ def forest_demo():
         virtual_indices=[0,1,2], 
         virtual_wmax=5.0, 
         virtual_amax=3.0, 
-        real_wmax=5.0, 
-        real_amax=3.0,
+        real_wmax=6.5, 
+        real_amax=3.5,
     )
     
     environment = GaussianEnvironment(
@@ -57,24 +60,21 @@ def forest_demo():
         obstacle_covariances=obstacle_covs,
     )
 
-    initializer = RRTStarInitializer(
-        voxel_size=0.01,
-        goal_threshold=0.005,
-        random_seed=42,
-        max_time=None,   
-    )
+    # Warm start: straight line in configuration space from the start to the
+    # goal configuration (found by numerical IK).
+    initializer = StraightLineInitializer()
 
     planner = Planner(
         robot=robot,
         environment=environment,
         joint_groups=joint_groups,
-        #initializer=initializer,
+        initializer=initializer,
         num_control_points=12,
         num_samples=25,
         weights={
-            "goal": 100.0,
-            "obstacle": 200.0,
-            "jerk": 0.1,
+            "goal": 0.75,
+            "obstacle": 500.0,
+            "jerk": 0.001,
             "virtual_jerk": 0.001,
         },
         vmax=1.0,

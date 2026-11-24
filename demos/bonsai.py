@@ -18,7 +18,7 @@ RECORD_FPS = 10
 
 def bonsai_demo():
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    record_path = os.path.join(os.path.dirname(__file__), "bonsai.mp4")
+    record_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "bonsai.mp4"))
     ply_file = os.path.join(PROJECT_ROOT, "data", "Bonsai.ply")
     
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)

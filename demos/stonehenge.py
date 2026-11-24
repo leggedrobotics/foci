@@ -35,7 +35,7 @@ PATH_COLORS = [
 
 def stonehenge_demo():
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    record_path = os.path.join(os.path.dirname(__file__), "stonehenge.mp4")
+    record_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "stonehenge.mp4"))
     ply_file = os.path.join(PROJECT_ROOT, "data", "stonehenge.ply")
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)

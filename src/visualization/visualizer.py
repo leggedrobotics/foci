@@ -1046,7 +1046,8 @@ class RobotVisualizerOnline:
 
             return
 
-        self.viser_urdf.update_cfg(q)
+        joint_names = getattr(self.robot, "actuated_joint_names", None)
+        self.viser_urdf.update_cfg(dict(zip(joint_names, q)))
 
     def _update_robot_gaussians(self, sample_idx: int):
         if not self._robot_gaussian_handles or self._ellipsoid_factory is None:
