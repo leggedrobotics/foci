@@ -17,7 +17,7 @@ RECORD_FPS = 10
 def coffe_table_demo():
 
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    record_path = os.path.join(os.path.dirname(__file__), "coffe_table.mp4")
+    record_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "coffe_table.mp4"))
     ply_file = os.path.join(PROJECT_ROOT, "data", "Coffee_Table.ply")
 
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data(ply_file)

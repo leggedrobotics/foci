@@ -21,6 +21,7 @@ Every planner in a comparison must therefore be measured at the SAME
 `num_waypoints` explicitly -- never rely on the default.
 """
 
+import os
 from time import perf_counter
 
 import numpy as np
@@ -58,7 +59,7 @@ def median_solve_time(fn, repeats: int = 3):
     return result, float(np.median(times))
 
 
-def scene_size(obstacle_means) -> float:
+def scene_size(obstacle_means, trim_percent: float = 0.0) -> float:
     """
     XY diagonal of the obstacle point cloud's bounding box.
 
@@ -67,9 +68,19 @@ def scene_size(obstacle_means) -> float:
     paper's eval/baselines.py `_score()` (`lengths.append(s[-1] / scene_size)`).
     The current benchmarks only ever reported the raw, scene-size-dependent
     length.
+
+    trim_percent > 0 drops that percentage of the Gaussians at each end of
+    every axis (the box spans the trim_percent and 100 - trim_percent
+    percentiles), so a few stray splats far from the scene do not inflate
+    its size.
     """
     means = np.asarray(obstacle_means, dtype=float)
-    extent = means.max(axis=0) - means.min(axis=0)
+    if trim_percent > 0.0:
+        low = np.percentile(means, trim_percent, axis=0)
+        high = np.percentile(means, 100.0 - trim_percent, axis=0)
+        extent = high - low
+    else:
+        extent = means.max(axis=0) - means.min(axis=0)
 
     return float(np.hypot(extent[0], extent[1]))
 
@@ -278,6 +289,116 @@ def path_length(trajectory) -> float:
     return float(np.sum(segment_lengths))
 
 
+def task_path_length(robot, trajectory, num_samples: int = 200) -> float:
+    """
+    Length, in metres, of the task-space path traced by a trajectory.
+
+    Each configuration is mapped through robot.f_task, so this measures the
+    end-effector path for a manipulator and the centre (x, y, z) path for a
+    drone. Joint angles and yaw are not counted, unlike path_length applied
+    directly to a configuration-space trajectory, which mixes radians with
+    metres.
+
+    The trajectory is first resampled to num_samples configurations
+    (linear interpolation in configuration space, see resample_trajectory),
+    so planners returning different numbers of waypoints (12 for STOMP, 25
+    for CHOMP and FOCI) are measured at the same resolution: the task-space
+    path between two waypoints is curved, and measuring only at the
+    waypoints would make coarser trajectories look shorter.
+    """
+    trajectory = resample_trajectory(trajectory, num_samples)
+
+    points = []
+    for q in trajectory:
+        point = robot.f_task(q)
+        if hasattr(point, "full"):
+            point = point.full()
+        points.append(np.asarray(point, dtype=float).reshape(3))
+
+    return path_length(np.asarray(points))
+
+
+def planner_metrics(result, min_distance: float, length: float, scene_diagonal: float) -> dict:
+    """
+    Standard per-planner statistics for save_results_csv: success flag,
+    timings (initializer, build, solve, total; seconds), minimum
+    robot-environment distance (m), task-space path length (m) and the
+    same length divided by the scene's XY diagonal.
+    """
+    return {
+        "success": bool(result.success),
+        "initializer_time_s": float(result.timings["initializer"]),
+        "build_time_s": float(result.timings["build"]),
+        "solve_time_s": float(result.timings["solve"]),
+        "total_time_s": float(result.timings["total"]),
+        "min_distance_m": float(min_distance),
+        "path_length_m": float(length),
+        "path_length_norm": float(length / scene_diagonal),
+    }
+
+
+def save_results_csv(csv_path, scene: str, robot, trajectories: dict, metrics: dict) -> None:
+    """
+    Store one scene's results in a single long-format CSV.
+
+    Columns: scene, planner, row_type, metric, value, sample, q0..qN,
+    task_x, task_y, task_z.
+
+    - row_type == "metric": one row per (planner, metric), e.g.
+      ("FOCI", "path_length_m", 5.62). Scene-wide values use planner "scene".
+    - row_type == "trajectory": one row per sample of each planner's final
+      trajectory, with the configuration q (q0..qN, joint angles for a
+      manipulator, [x, y, z, yaw] for a drone) and its task-space point
+      robot.f_task(q) (end-effector / drone centre).
+
+    If csv_path already exists, the rows of this scene are replaced and
+    the other scenes are kept, so every benchmark can write to the same
+    file.
+    """
+    import pandas as pd
+
+    rows = []
+    for planner, planner_metrics in metrics.items():
+        for metric, value in planner_metrics.items():
+            if isinstance(value, (bool, np.bool_)):
+                value = int(value)
+            rows.append({
+                "scene": scene, "planner": planner, "row_type": "metric",
+                "metric": metric, "value": value,
+            })
+
+    for planner, trajectory in trajectories.items():
+        for sample, q in enumerate(np.asarray(trajectory, dtype=float)):
+            point = robot.f_task(q)
+            if hasattr(point, "full"):
+                point = point.full()
+            point = np.asarray(point, dtype=float).reshape(3)
+            row = {
+                "scene": scene, "planner": planner, "row_type": "trajectory",
+                "sample": sample,
+                "task_x": point[0], "task_y": point[1], "task_z": point[2],
+            }
+            row.update({f"q{i}": value for i, value in enumerate(q)})
+            rows.append(row)
+
+    new = pd.DataFrame(rows)
+
+    if os.path.isfile(csv_path):
+        old = pd.read_csv(csv_path)
+        new = pd.concat([old[old["scene"] != scene], new], ignore_index=True)
+
+    q_columns = sorted(
+        (c for c in new.columns if c.startswith("q") and c[1:].isdigit()),
+        key=lambda c: int(c[1:]),
+    )
+    columns = ["scene", "planner", "row_type", "metric", "value", "sample",
+               *q_columns, "task_x", "task_y", "task_z"]
+    new = new.reindex(columns=columns)
+    new["sample"] = new["sample"].astype("Int64")
+    new.to_csv(csv_path, index=False)
+    print(f"Saved {scene} results to {csv_path}")
+
+
 def path_lengths(trajectories: dict) -> dict:
     """
     Compute the path length of several trajectories at once.
@@ -293,6 +414,48 @@ def path_lengths(trajectories: dict) -> dict:
         Mapping from the same names to their path length.
     """
     return {name: path_length(trajectory) for name, trajectory in trajectories.items()}
+
+
+def orbit_camera_params(
+    robot,
+    trajectory,
+    extra_points=(),
+    radius_scale: float = 2.0,
+    min_radius: float = 2.0,
+    height_ratio: float = 0.6,
+) -> dict:
+    """
+    Orbit-camera settings that keep a planned trajectory in frame.
+
+    The orbit is centred on the bounding box of the trajectory's task-space
+    points (robot.f_task: drone centre or end-effector) plus any
+    extra_points (goal, robot base, ...). Its radius is radius_scale times
+    the box's XY half-diagonal (at least min_radius), and the camera sits
+    height_ratio * radius above the centre, looking slightly down.
+
+    Returns keyword arguments for RobotVisualizerOnline
+    (orbit_center, orbit_radius, orbit_height).
+    """
+    points = []
+    for q in np.asarray(trajectory, dtype=float):
+        point = robot.f_task(q)
+        if hasattr(point, "full"):
+            point = point.full()
+        points.append(np.asarray(point, dtype=float).reshape(3))
+    for point in extra_points:
+        points.append(np.asarray(point, dtype=float).reshape(3))
+    points = np.asarray(points)
+
+    low, high = points.min(axis=0), points.max(axis=0)
+    center = 0.5 * (low + high)
+    half_diagonal_xy = 0.5 * float(np.linalg.norm((high - low)[:2]))
+    radius = max(radius_scale * half_diagonal_xy, min_radius)
+
+    return {
+        "orbit_center": center,
+        "orbit_radius": radius,
+        "orbit_height": height_ratio * radius,
+    }
 
 
 def _resample_by_arc_length(trajectory: np.ndarray, num_samples: int) -> np.ndarray:

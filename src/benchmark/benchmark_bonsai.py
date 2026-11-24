@@ -10,23 +10,36 @@ from src.environment.environment import GaussianEnvironment
 from src.initialize.rrtstar_initializer import RRTStarInitializer
 from src.planning.planner import Planner
 from src.planning.joints import JointGroups
-from src.visualization.visualizer import RobotVisualizer
+from src.visualization.visualizer import RobotVisualizer, RobotVisualizerOnline
 from src.benchmark.utils import (
     median_solve_time,
     minimum_robot_environment_distance,
-    path_length,
+    orbit_camera_params,
+    planner_metrics,
+    save_results_csv,
+    task_path_length,
     scene_size,
 )
 from src.benchmark.stomp_planner import STOMPPlanner
 from src.benchmark.chomp_planner import CHOMPPlanner
 
+# RECORD_VIDEO = True records two videos with the camera orbiting the scene
+# once each (ORBIT_PERIOD seconds) in docs/: benchmark_bonsai_foci.mp4 with the FOCI
+# trajectory only, then benchmark_bonsai_all.mp4 with FOCI, RRT*, CHOMP and
+# STOMP. It needs a browser connected to the viser URL; each recording stops
+# by itself after one orbit. With False, the interactive viewer shows all of
+# them. Every run also writes its statistics and final trajectories to
+# docs/results.csv (see save_results_csv), replacing this scene's previous rows.
 RECORD_VIDEO = False
 RECORD_FPS = 10
+ORBIT_PERIOD = 26.0
 
 
 def benchmark_bonsai():
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    record_path = os.path.join(os.path.dirname(__file__), "benchmark_bonsai.mp4")
+    record_path_foci = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "docs", "benchmark_bonsai_foci.mp4"))
+    record_path_all = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "docs", "benchmark_bonsai_all.mp4"))
+    results_csv = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "docs", "results.csv"))
     ply_file = os.path.join(PROJECT_ROOT, "data", "Bonsai.ply")
     
     obstacle_means, obstacle_covs, colors, opacities = extract_splat_data_2(ply_file)
@@ -167,9 +180,9 @@ def benchmark_bonsai():
         robot, environment, stomp_result.trajectory, opacities=opacities, include_robot_covariance=False
     )
 
-    foci_path_length = path_length(foci_result.trajectory)
-    chomp_path_length = path_length(chomp_result.trajectory)
-    stomp_path_length = path_length(stomp_result.trajectory)
+    foci_path_length = task_path_length(robot, foci_result.trajectory)
+    chomp_path_length = task_path_length(robot, chomp_result.trajectory)
+    stomp_path_length = task_path_length(robot, stomp_result.trajectory)
 
     # Dimensionless, comparable across scenes of different physical size
     # (the paper eval reports length / scene_size, not a raw metre figure).
@@ -211,6 +224,76 @@ def benchmark_bonsai():
 
 
 
+    rrt_min_dist, info = minimum_robot_environment_distance(
+        robot, environment, foci_result.initial_trajectory, opacities=opacities, include_robot_covariance=False
+    )
+    rrt_path_length = task_path_length(robot, foci_result.initial_trajectory)
+
+    foci_metrics = planner_metrics(foci_result, foci_min_dist, foci_path_length, scene)
+    foci_metrics["median_solve_time_s"] = float(foci_wall)
+    save_results_csv(
+        results_csv,
+        scene="bonsai",
+        robot=robot,
+        trajectories={
+            "FOCI": foci_result.trajectory,
+            "RRT*": foci_result.initial_trajectory,
+            "CHOMP": chomp_result.trajectory,
+            "STOMP": stomp_result.trajectory,
+        },
+        metrics={
+            "scene": {
+                "scene_diagonal_m": scene,
+                "n_environment_gaussians": len(obstacle_means),
+                "n_robot_gaussians": len(gaussian_specs),
+            },
+            "FOCI": foci_metrics,
+            "RRT*": {
+                "total_time_s": float(foci_result.timings["initializer"]),
+                "min_distance_m": float(rrt_min_dist),
+                "path_length_m": float(rrt_path_length),
+                "path_length_norm": float(rrt_path_length / scene),
+            },
+            "CHOMP": planner_metrics(chomp_result, chomp_min_dist, chomp_path_length, scene),
+            "STOMP": planner_metrics(stomp_result, stomp_min_dist, stomp_path_length, scene),
+        },
+    )
+
+    if RECORD_VIDEO:
+        vis = RobotVisualizerOnline(
+            robot=robot,
+            trajectory=foci_result.trajectory,
+            orbit_camera=True,
+            orbit_period=ORBIT_PERIOD,
+            **orbit_camera_params(robot, foci_result.trajectory, extra_points=[goal, np.zeros(3)]),
+        )
+        vis.visualize_goal(goal)
+        vis.visualize_gaussian_splat("Bonsai", obstacle_means, obstacle_covs, colors, opacities)
+        vis.visualize_robot_gaussians()
+        vis.visualize_path(name="FOCI")
+
+        # 1) FOCI trajectory only.
+        vis.visualize_trajectory(
+            loop=True,
+            record=True,
+            record_path=record_path_foci,
+            record_fps=RECORD_FPS,
+            record_duration=ORBIT_PERIOD,
+        )
+
+        # 2) Same scene and orbit with every planner's trajectory.
+        vis.visualize_initializer_path(foci_result.initial_trajectory, name="RRT*", color=(255, 0, 0))
+        vis.visualize_initializer_path(chomp_result.trajectory, name="CHOMP", color=(0, 0, 255))
+        vis.visualize_initializer_path(stomp_result.trajectory, name="STOMP", color=(255, 0, 255))
+        vis.visualize_trajectory(
+            loop=True,
+            record=True,
+            record_path=record_path_all,
+            record_fps=RECORD_FPS,
+            record_duration=ORBIT_PERIOD,
+        )
+        return
+
     vis = RobotVisualizer(
         robot=robot,
         trajectory=foci_result.trajectory
@@ -223,7 +306,7 @@ def benchmark_bonsai():
     vis.visualize_initializer_path(foci_result.initial_trajectory, name="RRT*", color=(255, 0, 0))
     vis.visualize_initializer_path(chomp_result.trajectory, name="CHOMP", color=(0, 0, 255))
     vis.visualize_initializer_path(stomp_result.trajectory, name="STOMP", color=(255, 0, 255))
-    vis.visualize_trajectory(loop=True, record=RECORD_VIDEO, record_path=record_path, record_fps=RECORD_FPS)
+    vis.visualize_trajectory(loop=True)
 
             
 if __name__ == "__main__":
