@@ -57,7 +57,7 @@ When using FOCI, please cite:
 
 
 ## Data Attribution
-The Gaussian splat file (`demos/data/stonehenge.ply`) used by this repository was generated using processed data from the [Splat-Nav project](https://github.com/chengine/splatnav), which is licensed under the MIT License. 
+The Gaussian splat file (`data/stonehenge.ply`) used by this repository was generated using processed data from the [Splat-Nav project](https://github.com/chengine/splatnav), which is licensed under the MIT License. 
 We acknowledge the authors of Splat-Nav for making their resources available.
 
 The following scenes were obtained from the [Polycam](https://poly.cam) community gallery and are licensed under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/):

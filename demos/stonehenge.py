@@ -38,7 +38,7 @@ def stonehenge_demo():
     record_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs", "stonehenge.mp4"))
     # Tracked with Git LFS: without `git lfs pull` this path only holds a
     # small text pointer instead of the splat file.
-    ply_file = os.path.join(PROJECT_ROOT, "demos", "data", "stonehenge.ply")
+    ply_file = os.path.join(PROJECT_ROOT, "data", "stonehenge.ply")
     with open(ply_file, "rb") as f:
         if f.read(40).startswith(b"version https://git-lfs"):
             raise RuntimeError(

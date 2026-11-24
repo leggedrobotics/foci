@@ -4,6 +4,7 @@
 *.csv
 !docs/results.csv
 *.ply
+!data/stonehenge.ply
 
 # vs code
 .vscode/
