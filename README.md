@@ -40,7 +40,7 @@ FOCI is a novel method to compute orientation aware trajectories for robots usin
 When using FOCI, please cite:
 
 ```bibtex
-@misc{andreu2026focitrajectoryoptimizationgaussian,
+@misc{andreu2026foci,
       title={FOCI: Trajectory Optimization on Gaussian Splats for Gaussian Robots}, 
       author={Mario Gomez Andreu and Carlos Martinez Cuenca and Maximum Wilder-Smith and Victor Klemm and Vaishakh Patil and Marco Hutter and Jesus Tordesillas},
       year={2026},
