@@ -1,5 +1,8 @@
 # FOCI: Trajectory Optimization on Gaussian Splats for Gaussian Robots
 
+### Journal submission: [https://arxiv.org/abs/2611.33380](https://arxiv.org/abs/2611.33380)
+### IROS 2025 paper: [https://arxiv.org/abs/2505.08510](https://arxiv.org/abs/2505.08510)
+
 <table align="center" border="1" style="border-collapse: collapse;">
   <tr>
     <th align="center" style="border: 1px solid; padding: 6px;">Static Environment</th>
